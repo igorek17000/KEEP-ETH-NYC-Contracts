@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-import {ILendingPoolAddressesProvider} from './ILendingPoolAddressesProvider.sol';
+import {DataTypes} from '../Library/Type/DataTypes.sol';
 
 interface IDataProvider {
   struct TokenData {
@@ -10,68 +10,38 @@ interface IDataProvider {
     address tokenAddress;
   }
 
-  struct AggregatedReserveData {
-    address underlyingAsset;
-    string name;
-    string symbol;
-    uint256 decimals;
-    uint256 baseLTVasCollateral;
-    uint256 reserveLiquidationThreshold;
-    uint256 reserveLiquidationBonus;
-    uint256 reserveFactor;
-    bool usageAsCollateralEnabled;
-    bool borrowingEnabled;
-    bool isActive;
-    bool isFrozen;
-    // base data
-    uint128 liquidityIndex;
-    uint128 borrowIndex;
-    uint128 liquidityRate;
-    uint128 borrowRate;
-    uint40 lastUpdateTimestamp;
-    address kTokenAddress;
-    address dTokenAddress;
-    address interestRateStrategyAddress;
-    //
-    uint256 availableLiquidity;
-    uint256 totalPrincipalStableDebt;
-    uint256 totalScaledDebt;
-    uint256 priceInMarketReferenceCurrency;
-    uint256 variableRateSlope1;
-    uint256 variableRateSlope2;
-  }
-
-  struct UserReserveData {
-    address underlyingAsset;
-    uint256 scaledKTokenBalance;
-    bool usageAsCollateralEnabledOnUser;
-    uint256 scaledDebt;
-  }
-
-  struct BaseCurrencyInfo {
-    uint256 marketReferenceCurrencyUnit;
-    int256 marketReferenceCurrencyPriceInUsd;
-    int256 networkBaseTokenPriceInUsd;
-    uint8 networkBaseTokenPriceDecimals;
-  }
-
-  function getReservesList(ILendingPoolAddressesProvider provider)
-    external
-    view
-    returns (address[] memory);
-
-  function getReservesData(ILendingPoolAddressesProvider provider)
+  function getAllReservesTokens(uint id) external view returns (TokenData[] memory);
+  function getAllATokens(uint id) external view returns (TokenData[] memory);
+  function getReserveConfigurationData(uint id, address asset)
     external
     view
     returns (
-      AggregatedReserveData[] memory,
-      BaseCurrencyInfo memory
+      DataTypes.ReserveConfiguration memory configuration
     );
-
-  function getUserReservesData(ILendingPoolAddressesProvider provider, address user)
+  
+  function getReserveData(uint id, address asset)
     external
     view
     returns (
-      UserReserveData[] memory
+      DataTypes.ReserveData memory
+    );
+  
+  function getUserReserveData(uint id, address asset, address user)
+    external
+    view
+    returns (
+      uint256 currentKTokenBalance,
+      uint256 currentVariableDebt,
+      uint256 scaledVariableDebt,
+      uint256 liquidityRate,
+      bool usageAsCollateralEnabled
+    );
+  
+  function getReserveTokensAddresses(uint id, address asset)
+    external
+    view
+    returns (
+      address aTokenAddress,
+      address variableDebtTokenAddress
     );
 }

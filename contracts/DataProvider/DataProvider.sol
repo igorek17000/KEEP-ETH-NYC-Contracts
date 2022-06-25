@@ -22,13 +22,8 @@ import {GenericLogic} from '../Library/Logic/GenericLogic.sol';
 import {ValidationLogic} from '../Library/Logic/ValidationLogic.sol';
 import {ReserveLogic} from '../Library/Logic/ReserveLogic.sol';
 
-contract DataProvider {
+contract DataProvider is IDataProvider {
   using WadRayMath for uint256;
-
-  struct TokenData {
-    string symbol;
-    address tokenAddress;
-  }
 
   ILendingPoolAddressesProvider public immutable ADDRESSES_PROVIDER;
 
@@ -36,7 +31,7 @@ contract DataProvider {
     ADDRESSES_PROVIDER = addressesProvider;
   }
 
-  function getAllReservesTokens(uint id) external view returns (TokenData[] memory) {
+  function getAllReservesTokens(uint id) external view override returns (TokenData[] memory) {
     (address pool_address,) = ADDRESSES_PROVIDER.getLendingPool(id);
     ILendingPool pool = ILendingPool(pool_address);
     address[] memory reserves = pool.getReservesList();
@@ -50,7 +45,7 @@ contract DataProvider {
     return reservesTokens;
   }
 
-  function getAllATokens(uint id) external view returns (TokenData[] memory) {
+  function getAllATokens(uint id) external view override returns (TokenData[] memory) {
     (address pool_address,) = ADDRESSES_PROVIDER.getLendingPool(id);
     ILendingPool pool = ILendingPool(pool_address);
     address[] memory reserves = pool.getReservesList();
@@ -68,6 +63,7 @@ contract DataProvider {
   function getReserveConfigurationData(uint id, address asset)
     external
     view
+    override
     returns (
       DataTypes.ReserveConfiguration memory configuration
     )
@@ -80,6 +76,7 @@ contract DataProvider {
   function getReserveData(uint id, address asset)
     external
     view
+    override
     returns (
       DataTypes.ReserveData memory
     )
@@ -93,6 +90,7 @@ contract DataProvider {
   function getUserReserveData(uint id, address asset, address user)
     external
     view
+    override
     returns (
       uint256 currentKTokenBalance,
       uint256 currentVariableDebt,
@@ -105,7 +103,7 @@ contract DataProvider {
     DataTypes.ReserveData memory reserve =
       ILendingPool(pool_address).getReserveData(asset);
 
-    (bool isUsingAsCollateral, bool isBorrowing) =
+    (bool isUsingAsCollateral,) =
       ILendingPool(pool_address).getUserConfiguration(user, reserve.id);
 
     currentKTokenBalance = IERC20Detailed(reserve.kTokenAddress).balanceOf(user);
@@ -118,6 +116,7 @@ contract DataProvider {
   function getReserveTokensAddresses(uint id, address asset)
     external
     view
+    override
     returns (
       address aTokenAddress,
       address variableDebtTokenAddress
