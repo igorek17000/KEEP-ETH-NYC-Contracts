@@ -22,6 +22,12 @@ contract LendingPoolStorage {
   mapping(uint256 => address) internal _reservesList;
   // the number of initialized reserves
   uint256 internal _reservesCount;
+  // the list of users who have supplied TODO: automatically remove stale users
+  mapping(uint256 => address) internal _usersList;
+  // if user has encountered before
+  mapping(address => bool) internal _userActive;
+  // the number of users
+  uint256 internal _usersCount;
   // if lending pool is paused or not
   bool internal _paused;
   // the maximum number of reserves

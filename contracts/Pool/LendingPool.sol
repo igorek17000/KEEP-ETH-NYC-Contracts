@@ -88,6 +88,8 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
       emit ReserveUsedAsCollateralEnabled(asset, onBehalfOf);
     }
 
+    _addUserToList(onBehalfOf);
+
     emit Deposit(asset, msg.sender, onBehalfOf, amount);
   }
 
@@ -452,6 +454,15 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     return _activeReserves;
   }
 
+  function getUsersList() external view override returns (address[] memory) {
+    address[] memory _activeUsers = new address[](_usersCount);
+
+    for (uint256 i = 0; i < _usersCount; i++) {
+      _activeUsers[i] = _usersList[i];
+    }
+    return _activeUsers;
+  }
+
   /**
    * @dev Returns the cached LendingPoolAddressesProvider connected to this contract
    **/
@@ -662,6 +673,17 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
       _reservesList[reservesCount] = asset;
 
       _reservesCount = reservesCount + 1;
+    }
+  }
+
+  function _addUserToList(address user) internal {
+    bool userAlreadyAdded = _userActive[user] == true;
+
+    if (!userAlreadyAdded) {
+      _userActive[user] = true;
+      _usersList[_usersCount] = user;
+
+      _usersCount = _usersCount + 1;
     }
   }
 }
