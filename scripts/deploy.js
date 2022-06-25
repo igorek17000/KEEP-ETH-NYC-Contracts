@@ -173,7 +173,7 @@ async function main() {
   await main_pool_configurator.initReserve(
     matic_init_reserve_input
   );
-  console.log("reserves initialized")
+  console.log("reserves initialized: main pool")
   await main_pool_configurator.configureReserveAsCollateral(
     ETH.address,
     6000, // ltv
@@ -192,19 +192,19 @@ async function main() {
     6500, // liquidation threshold
     10500 // bonus
   );
-  console.log("reserves as collateral")
+  console.log("reserves as collateral: main pool")
   await main_pool_configurator.enableBorrowingOnReserve(ETH.address);
   await main_pool_configurator.enableBorrowingOnReserve(USDC.address);
   await main_pool_configurator.enableBorrowingOnReserve(MATIC.address);
-  console.log("reserves borrowing")
+  console.log("reserves borrowing: main pool")
   await main_pool_configurator.setReserveFactor(ETH.address, 2000);
   await main_pool_configurator.setReserveFactor(USDC.address, 2000);
   await main_pool_configurator.setReserveFactor(MATIC.address, 2000);
-  console.log("reserve factor")
+  console.log("reserve factor: main pool")
   await main_pool_configurator.activateReserve(ETH.address);
   await main_pool_configurator.activateReserve(USDC.address);
   await main_pool_configurator.activateReserve(MATIC.address);
-  console.log("reserve activate")
+  console.log("reserve activated: main pool")
 
   // 11. init ETH, USDC on ETH-USDC pool
   await eth_usdc_pool_configurator.initReserve(
@@ -213,35 +213,35 @@ async function main() {
   await eth_usdc_pool_configurator.initReserve(
     usdc_init_reserve_input
   );
-  console.log("0")
+  console.log("reserves initialized: eth-usdc pool")
   await eth_usdc_pool_configurator.configureReserveAsCollateral(
     ETH.address,
     8000, // ltv
     9000, // liquidation threshold
     10500 // bonus
   );
-  console.log("0.5")
   await eth_usdc_pool_configurator.configureReserveAsCollateral(
     USDC.address,
     9000, // ltv
     9500, // liquidation threshold
     10500 // bonus
   );
-  console.log("1")
+  console.log("reserves as collateral: eth-usdc pool")
   await eth_usdc_pool_configurator.enableBorrowingOnReserve(ETH.address);
   await eth_usdc_pool_configurator.enableBorrowingOnReserve(USDC.address);
-  console.log("2")
+  console.log("reserves borrowing: eth-usdc pool")
   await eth_usdc_pool_configurator.setReserveFactor(ETH.address, 2000);
   await eth_usdc_pool_configurator.setReserveFactor(USDC.address, 2000);
-  console.log("3")
+  console.log("reserve factor: eth-usdc pool")
   await eth_usdc_pool_configurator.activateReserve(ETH.address);
   await eth_usdc_pool_configurator.activateReserve(USDC.address);
+  console.log("reserve activated: eth-usdc pool")
   console.log("reserve done")
   
   // 12. unpause the pool
   await main_pool_configurator.setPoolPause(false);
   await eth_usdc_pool_configurator.setPoolPause(false);
-
+  console.log("pools activated")
 
   // TEST ONLY
   await USDC.approve(main_pool.address, parseUnits("1", 50));
