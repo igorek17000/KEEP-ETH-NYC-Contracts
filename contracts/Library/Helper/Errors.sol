@@ -51,6 +51,7 @@ library Errors {
         VL_NO_EXPLICIT_AMOUNT_TO_REPAY_ON_BEHALF,
         VL_UNDERLYING_BALANCE_NOT_GREATER_THAN_0,
         VL_DEPOSIT_ALREADY_IN_USE,
+        VL_TRADER_ADDRESS_MISMATCH,
         /** Collateral Manager */
         CM_NO_ERROR,
         CM_NO_ACTIVE_RESERVE,

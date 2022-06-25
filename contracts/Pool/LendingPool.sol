@@ -57,12 +57,12 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   }
 
   /**
-   * @dev Deposits an `amount` of underlying asset into the reserve, receiving in return overlying aTokens.
+   * @dev Deposits an `amount` of underlying asset into the reserve, receiving in return overlying kTokens.
    * - E.g. User deposits 100 USDC and gets in return 100 aUSDC
    * @param asset The address of the underlying asset to deposit
    * @param amount The amount to be deposited
-   * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
-   *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
+   * @param onBehalfOf The address that will receive the kTokens, same as msg.sender if the user
+   *   wants to receive them on his own wallet, or a different address if the beneficiary of kTokens
    *   is a different wallet
    **/
   function deposit(
@@ -74,14 +74,16 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
 
     ValidationLogic.validateDeposit(reserve, amount);
 
-    address aToken = reserve.kTokenAddress;
+    address kToken = reserve.kTokenAddress;
 
     reserve.updateState();
-    reserve.updateInterestRates(asset, aToken, amount, 0);
+    reserve.updateInterestRates(asset, kToken, amount, 0);
 
-    IERC20(asset).safeTransferFrom(msg.sender, aToken, amount);
+    // NOTE: reduce complexity for frontend, as they need only approve once
+    IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
+    IERC20(asset).safeTransfer(kToken, amount);
 
-    bool isFirstDeposit = IKToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
+    bool isFirstDeposit = IKToken(kToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
 
     if (isFirstDeposit) {
       _usersConfig[onBehalfOf].isUsingAsCollateral[reserve.id] = true;
@@ -94,11 +96,11 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   }
 
   /**
-   * @dev Withdraws an `amount` of underlying asset from the reserve, burning the equivalent aTokens owned
+   * @dev Withdraws an `amount` of underlying asset from the reserve, burning the equivalent kTokens owned
    * E.g. User has 100 aUSDC, calls withdraw() and receives 100 USDC, burning the 100 aUSDC
    * @param asset The address of the underlying asset to withdraw
    * @param amount The underlying amount to be withdrawn
-   *   - Send the value type(uint256).max in order to withdraw the whole aToken balance
+   *   - Send the value type(uint256).max in order to withdraw the whole kToken balance
    * @param to Address that will receive the underlying, same as msg.sender if the user
    *   wants to receive it on his own wallet, or a different address if the beneficiary is a
    *   different wallet
@@ -111,9 +113,9 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   ) external override whenNotPaused returns (uint256) {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
-    address aToken = reserve.kTokenAddress;
+    address kToken = reserve.kTokenAddress;
 
-    uint256 userBalance = IKToken(aToken).balanceOf(msg.sender);
+    uint256 userBalance = IKToken(kToken).balanceOf(msg.sender);
 
     uint256 amountToWithdraw = amount;
 
@@ -134,7 +136,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
 
     reserve.updateState();
 
-    reserve.updateInterestRates(asset, aToken, 0, amountToWithdraw);
+    reserve.updateInterestRates(asset, kToken, 0, amountToWithdraw);
 
     if (amountToWithdraw == userBalance) {
       _usersConfig[msg.sender].isUsingAsCollateral[reserve.id] = false;
@@ -142,7 +144,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     }
 
     // NOTE (Gary): transfer asset operation is in this burn function
-    IKToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
+    IKToken(kToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
 
     emit Withdraw(asset, msg.sender, to, amountToWithdraw);
 
@@ -231,16 +233,18 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
       );
     }
 
-    address aToken = reserve.kTokenAddress;
-    reserve.updateInterestRates(asset, aToken, paybackAmount, 0);
+    address kToken = reserve.kTokenAddress;
+    reserve.updateInterestRates(asset, kToken, paybackAmount, 0);
 
     if (variableDebt.sub(paybackAmount) == 0) {
       _usersConfig[onBehalfOf].isBorrowing[reserve.id] = false;
     }
 
-    IERC20(asset).safeTransferFrom(msg.sender, aToken, paybackAmount);
+    // NOTE: reduce complexity for frontend, as they need only approve once
+    IERC20(asset).safeTransferFrom(msg.sender, address(this), paybackAmount);
+    IERC20(asset).safeTransfer(kToken, paybackAmount);
 
-    IKToken(aToken).handleRepayment(msg.sender, paybackAmount);
+    IKToken(kToken).handleRepayment(msg.sender, paybackAmount);
 
     emit Repay(asset, onBehalfOf, msg.sender, paybackAmount);
 
@@ -287,7 +291,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
    * @param debtAsset The address of the underlying borrowed asset to be repaid with the liquidation
    * @param user The address of the borrower getting liquidated
    * @param debtToCover The debt amount of borrowed `asset` the liquidator wants to cover
-   * @param receiveAToken `true` if the liquidators wants to receive the collateral aTokens, `false` if he wants
+   * @param receiveAToken `true` if the liquidators wants to receive the collateral kTokens, `false` if he wants
    * to receive the underlying collateral asset directly
    **/
   function liquidationCall(
@@ -478,14 +482,14 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   }
 
   /**
-   * @dev Validates and finalizes an aToken transfer
-   * - Only callable by the overlying aToken of the `asset`
-   * @param asset The address of the underlying asset of the aToken
-   * @param from The user from which the aTokens are transferred
-   * @param to The user receiving the aTokens
+   * @dev Validates and finalizes an kToken transfer
+   * - Only callable by the overlying kToken of the `asset`
+   * @param asset The address of the underlying asset of the kToken
+   * @param from The user from which the kTokens are transferred
+   * @param to The user receiving the kTokens
    * @param amount The amount being transferred/withdrawn
-   * @param balanceFromBefore The aToken balance of the `from` user before the transfer
-   * @param balanceToBefore The aToken balance of the `to` user before the transfer
+   * @param balanceFromBefore The kToken balance of the `from` user before the transfer
+   * @param balanceToBefore The kToken balance of the `to` user before the transfer
    */
   function finalizeTransfer(
     address asset,
@@ -524,7 +528,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   }
 
   /**
-   * @dev Initializes a reserve, activating it, assigning an aToken and debt tokens and an
+   * @dev Initializes a reserve, activating it, assigning an kToken and debt tokens and an
    * interest rate strategy
    * - Only callable by the LendingPoolConfigurator contract
    * @param asset The address of the underlying asset of the reserve
@@ -685,5 +689,55 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
 
       _usersCount = _usersCount + 1;
     }
+  }
+
+  /**
+   * @dev Open a position, supply margin and borrow from pool. Traders should 
+   * approve pools at first for the transfer of their assets
+   * @param marginAsset The address of asset the trader supply as margin
+   * @param borrowedAsset The address of asset the trader would like to borrow at a leverage
+   * @param heldAsset The address of asset the pool will hold after swap
+   * @param marginAmount The amount of margin the trader transfers in
+   * @param leverage The leverage specified by user
+   **/
+  function openPosition(
+    address marginAsset,
+    address borrowedAsset,
+    address heldAsset,
+    uint256 marginAmount,
+    uint256 leverage
+  )
+  external
+  whenNotPaused
+  returns (
+    DataTypes.UserPosition memory
+  ) {
+    DataTypes.ReserveData storage marginReserve = _reserves[marginAsset];
+    DataTypes.ReserveData storage borrowedReserve = _reserves[borrowedAsset];
+
+    ValidationLogic.validateOpenPosition(marginReserve, borrowedReserve, heldAsset, marginAmount, leverage);
+
+    IERC20(marginAsset).safeTransferFrom(msg.sender, address(this), marginAmount);
+  }
+
+  /**
+   * @dev Close a position
+   * @param id The id of position
+   * @param paymentAsset The address of asset the user would like to receive finally
+   * @return paymentAmount The amount of asset to payback user 
+   * @return pnl The pnl in ETH
+   **/
+  function closePosition(
+    uint256 id,
+    address paymentAsset
+  )
+  external
+  whenNotPaused
+  returns (
+    uint256 paymentAmount,
+    uint256 pnl
+  ) {
+    DataTypes.UserPosition storage position = _positionsList[id];
+    ValidationLogic.validateClosePosition(msg.sender, position, paymentAsset);
   }
 }

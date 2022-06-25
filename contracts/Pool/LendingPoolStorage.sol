@@ -18,6 +18,11 @@ contract LendingPoolStorage {
   // user configs, mapped by user address
   mapping(address => DataTypes.UserConfigurationMap) internal _usersConfig;
 
+  // list of positions, structured as a mapping for gas savings
+  mapping(uint256 => DataTypes.UserPosition) internal _positionsList;
+  // the number of historical positions
+  uint256 internal _positionsCount;
+
   // the list of the available reserves, structured as a mapping for gas savings reasons
   mapping(uint256 => address) internal _reservesList;
   // the number of initialized reserves

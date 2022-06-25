@@ -49,5 +49,22 @@ library DataTypes {
     mapping(uint256 => bool) isBorrowing;
   }
 
+  struct UserPosition {
+    // the trader
+    address traderAddress;
+    // the asset as margin
+    address marginAsset;
+    // the asset to borrow
+    address borrowedAsset;
+    // the amount of provided margin
+    uint256 marginAmount;
+    // the actual amount of borrowed asset
+    uint256 borrowedAmount;
+    // the liquidationThreshold at trade
+    uint256 liquidationThreshold;
+    // the id of position
+    uint256 id;
+  }
+
   enum InterestRateMode {NONE, VARIABLE}
 }

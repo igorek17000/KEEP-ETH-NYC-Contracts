@@ -26,8 +26,38 @@ library ValidationLogic {
   using PercentageMath for uint256;
   using SafeERC20 for IERC20;
 
-  uint256 public constant REBALANCE_UP_LIQUIDITY_RATE_THRESHOLD = 4000;
-  uint256 public constant REBALANCE_UP_USAGE_RATIO_THRESHOLD = 0.95 * 1e27; //usage ratio of 95%
+  function validateOpenPosition(
+    DataTypes.ReserveData storage marginReserve,
+    DataTypes.ReserveData storage borrowedReserve,
+    address heldAsset,
+    uint256 marginAmount,
+    uint256 leverage
+  ) external view {
+    bool isActive = marginReserve.configuration.active;
+    bool isFrozen = marginReserve.configuration.frozen;
+
+    require(marginAmount != 0, Errors.GetError(Errors.Error.VL_INVALID_AMOUNT));
+    require(isActive, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
+    require(!isFrozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
+
+    isActive = borrowedReserve.configuration.active;
+    isFrozen = borrowedReserve.configuration.frozen;
+    bool borrowingEnabled = borrowedReserve.configuration.borrowingEnabled;
+
+    require(isActive, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
+    require(!isFrozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
+
+  }
+
+  function validateClosePosition(
+    address traderAddress,
+    DataTypes.UserPosition storage position,
+    address paymentAddress
+  ) external view {
+    address positionTrader = position.traderAddress;
+
+    require(positionTrader == traderAddress, Errors.GetError(Errors.Error.VL_TRADER_ADDRESS_MISMATCH));
+  }
 
   /**
    * @dev Validates a deposit action

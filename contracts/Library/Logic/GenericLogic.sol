@@ -9,6 +9,7 @@ import {ReserveLogic} from './ReserveLogic.sol';
 import {WadRayMath} from '../Math/WadRayMath.sol';
 import {PercentageMath} from '../Math/PercentageMath.sol';
 import {IPriceOracleGetter} from '../../Interface/IPriceOracleGetter.sol';
+import {IAggregationRouterV4} from '../../Interface/1inch/IAggregationRouterV4.sol';
 import {DataTypes} from '../Type/DataTypes.sol';
 
 library GenericLogic {
