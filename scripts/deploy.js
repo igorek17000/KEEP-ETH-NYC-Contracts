@@ -243,6 +243,12 @@ async function main() {
   await eth_usdc_pool_configurator.setPoolPause(false);
   console.log("pools activated")
 
+  // 13. readers
+  const DataProvider = await hre.ethers.getContractFactory("DataProvider");
+  let data_provider = await DataProvider.deploy(address_provider.address);
+  await data_provider.deployed();
+  console.log("Data provider address: ", data_provider.address);
+
   // TEST ONLY
   await USDC.approve(main_pool.address, parseUnits("1", 50));
   await ETH.approve(main_pool.address, parseUnits("1", 50));
