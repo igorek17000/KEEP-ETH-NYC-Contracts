@@ -3,7 +3,7 @@
 //
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
-const { parseUnits } = require("ethers/lib/utils");
+const { parseUnits, concat } = require("ethers/lib/utils");
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 
@@ -35,14 +35,26 @@ async function main() {
   console.log("Oracle address: ", oracle.address);
 
   // 4. deploy address provider
-  const LendingPoolAddressProvider = await hre.ethers.getContractFactory("LendingPoolAddressProvider");
-  let address_provider = await LendingPoolAddressProvider
+  const LendingPoolAddressesProvider = await hre.ethers.getContractFactory("LendingPoolAddressesProvider");
+  let address_provider = await LendingPoolAddressesProvider
     .deploy(deployer.address, deployer.address, oracle.address);
   await address_provider.deployed();
   console.log("Address provider address: ", address_provider.address);
+  // get libraries
+  const ReserveLogic = await hre.ethers.getContractFactory("ReserveLogic");
+  const GenericLogic = await hre.ethers.getContractFactory("GenericLogic");
+  let generic_logic = await GenericLogic.deploy();
+  await generic_logic.deployed();
+  const ValidationLogic = await hre.ethers.getContractFactory("ValidationLogic", {libraries: {GenericLogic: generic_logic.address}});
+  let reserve_logic = await ReserveLogic.deploy();
+  let validation_logic = await ValidationLogic.deploy();
+  await reserve_logic.deployed();
+  await validation_logic.deployed();
+  
+  let library = {libraries: {ReserveLogic: reserve_logic.address, ValidationLogic: validation_logic.address, GenericLogic: generic_logic.address}}
 
   // 5. deploy 2 lending pools: main and eth-usdc
-  const LendingPool = await hre.ethers.getContractFactory("LendingPool");
+  const LendingPool = await hre.ethers.getContractFactory("LendingPool", {libraries: {ReserveLogic: reserve_logic.address, ValidationLogic: validation_logic.address}});
   let main_pool = await LendingPool.deploy(address_provider.address);
   let eth_usdc_pool = await LendingPool.deploy(address_provider.address);
   await main_pool.deployed();
@@ -51,26 +63,26 @@ async function main() {
   console.log("ETH-USDC Pool Address: ", eth_usdc_pool.address);
 
   // 6. deploy rate strategies
-  const DefaultReserveIntersetRateStrategy = await hre.ethers.getContractFactory("DefaultReserveIntersetRateStrategy");
+  const DefaultReserveInterestRateStrategy = await hre.ethers.getContractFactory("DefaultReserveInterestRateStrategy");
   let optimal_rate = parseUnits("0.9", 27);
   let base_rate = parseUnits("0.01", 27);
   let slope_1 = parseUnits("0.1", 27);
   let slope_2 = parseUnits("1", 27);
-  let usdc_rate_strategy = await DefaultReserveIntersetRateStrategy.deploy(
+  let usdc_rate_strategy = await DefaultReserveInterestRateStrategy.deploy(
     address_provider.address,
     optimal_rate,
     base_rate,
     slope_1,
     slope_2
   );
-  let eth_rate_strategy = await DefaultReserveIntersetRateStrategy.deploy(
+  let eth_rate_strategy = await DefaultReserveInterestRateStrategy.deploy(
     address_provider.address,
     optimal_rate,
     base_rate,
     slope_1,
     slope_2
   );
-  let matic_rate_strategy = await DefaultReserveIntersetRateStrategy.deploy(
+  let matic_rate_strategy = await DefaultReserveInterestRateStrategy.deploy(
     address_provider.address,
     optimal_rate,
     base_rate,
@@ -113,6 +125,7 @@ async function main() {
     eth_usdc_pool_configurator.address,
     eth_usdc_pool_cm.address
   );
+  console.log("Pools registered");
 
   // 10. init ETH, USDC, MATIC on main pool
   let eth_init_reserve_input = [
@@ -160,24 +173,38 @@ async function main() {
   await main_pool_configurator.initReserve(
     matic_init_reserve_input
   );
+  console.log("reserves initialized")
   await main_pool_configurator.configureReserveAsCollateral(
     ETH.address,
-    60, // ltv
-    65, // liquidation threshold
-    105 // bonus
+    6000, // ltv
+    6500, // liquidation threshold
+    10500 // bonus
   );
   await main_pool_configurator.configureReserveAsCollateral(
     USDC.address,
-    80, // ltv
-    90, // liquidation threshold
-    105 // bonus
+    8000, // ltv
+    9000, // liquidation threshold
+    10500 // bonus
   );
   await main_pool_configurator.configureReserveAsCollateral(
     MATIC.address,
-    60, // ltv
-    65, // liquidation threshold
-    105 // bonus
+    6000, // ltv
+    6500, // liquidation threshold
+    10500 // bonus
   );
+  console.log("reserves as collateral")
+  await main_pool_configurator.enableBorrowingOnReserve(ETH.address);
+  await main_pool_configurator.enableBorrowingOnReserve(USDC.address);
+  await main_pool_configurator.enableBorrowingOnReserve(MATIC.address);
+  console.log("reserves borrowing")
+  await main_pool_configurator.setReserveFactor(ETH.address, 2000);
+  await main_pool_configurator.setReserveFactor(USDC.address, 2000);
+  await main_pool_configurator.setReserveFactor(MATIC.address, 2000);
+  console.log("reserve factor")
+  await main_pool_configurator.activateReserve(ETH.address);
+  await main_pool_configurator.activateReserve(USDC.address);
+  await main_pool_configurator.activateReserve(MATIC.address);
+  console.log("reserve activate")
 
   // 11. init ETH, USDC on ETH-USDC pool
   await eth_usdc_pool_configurator.initReserve(
@@ -186,18 +213,35 @@ async function main() {
   await eth_usdc_pool_configurator.initReserve(
     usdc_init_reserve_input
   );
+  console.log("0")
   await eth_usdc_pool_configurator.configureReserveAsCollateral(
     ETH.address,
-    80, // ltv
-    90, // liquidation threshold
-    110 // bonus
+    8000, // ltv
+    9000, // liquidation threshold
+    10500 // bonus
   );
+  console.log("0.5")
   await eth_usdc_pool_configurator.configureReserveAsCollateral(
     USDC.address,
-    90, // ltv
-    95, // liquidation threshold
-    110 // bonus
+    9000, // ltv
+    9500, // liquidation threshold
+    10500 // bonus
   );
+  console.log("1")
+  await eth_usdc_pool_configurator.enableBorrowingOnReserve(ETH.address);
+  await eth_usdc_pool_configurator.enableBorrowingOnReserve(USDC.address);
+  console.log("2")
+  await eth_usdc_pool_configurator.setReserveFactor(ETH.address, 2000);
+  await eth_usdc_pool_configurator.setReserveFactor(USDC.address, 2000);
+  console.log("3")
+  await eth_usdc_pool_configurator.activateReserve(ETH.address);
+  await eth_usdc_pool_configurator.activateReserve(USDC.address);
+  console.log("reserve done")
+  
+  // 12. unpause the pool
+  await main_pool_configurator.setPoolPause(false);
+  await eth_usdc_pool_configurator.setPoolPause(false);
+
 
   // TEST ONLY
   await USDC.approve(main_pool.address, parseUnits("1", 50));

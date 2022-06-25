@@ -44,7 +44,7 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
     lending_pool_array.push(lending_pool_address);
     lending_pool_configurator_mapping[lending_pool_address] = lending_pool_configurator_address;
     lending_pool_cm_mapping[lending_pool_address] = lending_pool_cm_address;
-    emit PoolAdded(lending_pool_address, lending_pool_configurator_address);
+    emit PoolAdded(lending_pool_address, lending_pool_configurator_address, lending_pool_cm_address);
   }
 
   function _remove_lending_pool(address lending_pool_address) internal {
