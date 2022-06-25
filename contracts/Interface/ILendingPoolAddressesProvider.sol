@@ -44,8 +44,4 @@ interface ILendingPoolAddressesProvider {
   function getPriceOracle() external view returns (address);
 
   function setPriceOracle(address priceOracle) external;
-
-  function getLendingRateOracle() external view returns (address);
-
-  function setLendingRateOracle(address lendingRateOracle) external;
 }

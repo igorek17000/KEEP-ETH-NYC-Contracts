@@ -154,7 +154,7 @@ contract DToken is KERC20('DEBTTOKEN_IMPL', 'DEBTTOKEN_IMPL', 0), IDToken {
       return 0;
     }
 
-    return scaledBalance.rayMul(_pool.getReserveNormalizedVariableDebt(_underlyingAsset));
+    return scaledBalance.rayMul(_pool.getReserveNormalizedDebt(_underlyingAsset));
   }
 
   /**
@@ -223,7 +223,7 @@ contract DToken is KERC20('DEBTTOKEN_IMPL', 'DEBTTOKEN_IMPL', 0), IDToken {
    * @return The total supply
    **/
   function totalSupply() public view virtual override(KERC20, IERC20) returns (uint256) {
-    return super.totalSupply().rayMul(_pool.getReserveNormalizedVariableDebt(_underlyingAsset));
+    return super.totalSupply().rayMul(_pool.getReserveNormalizedDebt(_underlyingAsset));
   }
 
   /**

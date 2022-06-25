@@ -58,6 +58,8 @@ contract LendingPoolCollateralManager is
     string errorMsg;
   }
 
+  constructor() {}
+
   /**
    * @dev Function to liquidate a position if its Health Factor drops below 1
    * - The caller (liquidator) covers `debtToCover` amount of debt of the user getting liquidated, and receives

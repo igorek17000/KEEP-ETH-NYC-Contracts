@@ -49,6 +49,11 @@ contract LendingPoolConfigurator is ILendingPoolConfigurator {
     }
   }
 
+  function initReserve(InitReserveInput calldata input) external onlyMainAdmin {
+    ILendingPool cachedPool = pool;
+    _initReserve(cachedPool, input);
+  }
+
   function _initReserve(ILendingPool _pool, InitReserveInput calldata input) internal {
     KToken kToken = new KToken(
       _pool,

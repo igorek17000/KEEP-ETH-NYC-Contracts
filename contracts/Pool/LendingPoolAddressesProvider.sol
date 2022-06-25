@@ -18,12 +18,21 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   bytes32 private constant MAIN_ADMIN = 'MAIN_ADMIN';
   bytes32 private constant EMERGENCY_ADMIN = 'EMERGENCY_ADMIN';
   bytes32 private constant PRICE_ORACLE = 'PRICE_ORACLE';
-  bytes32 private constant LENDING_RATE_ORACLE = 'LENDING_RATE_ORACLE';
 
   address[] private lending_pool_array;
   mapping(address => address) private lending_pool_configurator_mapping;
   mapping(address => address) private lending_pool_cm_mapping;
   mapping(address => bool) private lending_pool_valid;
+
+  constructor(
+    address main_admin,
+    address emergency_admin,
+    address oracle
+  ) {
+    _addresses[MAIN_ADMIN] = main_admin;
+    _addresses[EMERGENCY_ADMIN] = emergency_admin;
+    _addresses[PRICE_ORACLE] = oracle;
+  }
 
   function _add_lending_pool(
     address lending_pool_address,
@@ -157,14 +166,5 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   function setPriceOracle(address priceOracle) external override onlyOwner {
     _addresses[PRICE_ORACLE] = priceOracle;
     emit PriceOracleUpdated(priceOracle);
-  }
-
-  function getLendingRateOracle() external view override returns (address) {
-    return getAddress(LENDING_RATE_ORACLE);
-  }
-
-  function setLendingRateOracle(address lendingRateOracle) external override onlyOwner {
-    _addresses[LENDING_RATE_ORACLE] = lendingRateOracle;
-    emit LendingRateOracleUpdated(lendingRateOracle);
   }
 }
