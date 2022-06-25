@@ -62,14 +62,6 @@ interface ILendingPool {
   );
 
   /**
-   * @dev Emitted on swapBorrowRateMode()
-   * @param reserve The address of the underlying asset of the reserve
-   * @param user The address of the user swapping his rate mode
-   * @param rateMode The rate mode that the user wants to swap to
-   **/
-  event Swap(address indexed reserve, address indexed user, uint256 rateMode);
-
-  /**
    * @dev Emitted on setUserUseReserveAsCollateral()
    * @param reserve The address of the underlying asset of the reserve
    * @param user The address of the user enabling the usage as collateral
@@ -82,29 +74,6 @@ interface ILendingPool {
    * @param user The address of the user enabling the usage as collateral
    **/
   event ReserveUsedAsCollateralDisabled(address indexed reserve, address indexed user);
-
-  /**
-   * @dev Emitted on rebalanceStableBorrowRate()
-   * @param reserve The address of the underlying asset of the reserve
-   * @param user The address of the user for which the rebalance has been executed
-   **/
-  event RebalanceStableBorrowRate(address indexed reserve, address indexed user);
-
-  /**
-   * @dev Emitted on flashLoan()
-   * @param target The address of the flash loan receiver contract
-   * @param initiator The address initiating the flash loan
-   * @param asset The address of the asset being flash borrowed
-   * @param amount The amount flash borrowed
-   * @param premium The fee flash borrowed
-   **/
-  event FlashLoan(
-    address indexed target,
-    address indexed initiator,
-    address indexed asset,
-    uint256 amount,
-    uint256 premium
-  );
 
   /**
    * @dev Emitted when the pause is triggered.
@@ -267,30 +236,6 @@ interface ILendingPool {
   ) external;
 
   /**
-   * @dev Allows smartcontracts to access the liquidity of the pool within one transaction,
-   * as long as the amount taken plus a fee is returned.
-   * IMPORTANT There are security concerns for developers of flashloan receiver contracts that must be kept into consideration.
-   * For further details please visit https://developers.aave.com
-   * @param receiverAddress The address of the contract receiving the funds, implementing the IFlashLoanReceiver interface
-   * @param assets The addresses of the assets being flash-borrowed
-   * @param amounts The amounts amounts being flash-borrowed
-   * @param modes Types of the debt to open if the flash loan is not returned:
-   *   0 -> Don't open any debt, just revert if funds can't be transferred from the receiver
-   *   1 -> Open debt at stable rate for the value of the amount flash-borrowed to the `onBehalfOf` address
-   *   2 -> Open debt at variable rate for the value of the amount flash-borrowed to the `onBehalfOf` address
-   * @param onBehalfOf The address that will receive the debt in the case of using on `modes` 1 or 2
-   * @param params Variadic packed params to pass to the receiver as extra information
-   **/
-  function flashLoan(
-    address receiverAddress,
-    address[] calldata assets,
-    uint256[] calldata amounts,
-    uint256[] calldata modes,
-    address onBehalfOf,
-    bytes calldata params
-  ) external;
-
-  /**
    * @dev Returns the user account data across all the reserves
    * @param user The address of the user
    * @return totalCollateralETH the total collateral in ETH of the user
@@ -351,6 +296,13 @@ interface ILendingPool {
    * @return The reserve normalized debt
    */
   function getReserveNormalizedDebt(address asset) external view returns (uint256);
+
+  /**
+   * @dev Returns the state and configuration of the reserve
+   * @param asset The address of the underlying asset of the reserve
+   * @return The state of the reserve
+   **/
+  function getReserveData(address asset) external view returns (DataTypes.ReserveData memory);
   
   function getReservesList() external view returns (address[] memory);
 

@@ -2,19 +2,28 @@
 pragma solidity ^0.8.0;
 
 interface ILendingPoolAddressesProvider {
-  event LendingPoolUpdated(address indexed newAddress);
+  event LendingPoolUpdated(address newAddress, address configuratorAddress);
   event ConfigurationAdminUpdated(address indexed newAddress);
   event EmergencyAdminUpdated(address indexed newAddress);
   event LendingPoolConfiguratorUpdated(address indexed newAddress);
   event PriceOracleUpdated(address indexed newAddress);
   event LendingRateOracleUpdated(address indexed newAddress);
   event AddressSet(bytes32 id, address indexed newAddress);
-  event PoolAdded(address pool_address);
+  event PoolAdded(address pool_address, address configuratorAddress);
+  event LendingPoolUpdated(uint id, address pool, address lending_pool_configurator_address, address lending_pool_cm_address);
   event PoolRemoved(address pool_address);
 
-  function getAllPools() external view returns (address[] memory);
+  function getAllPools() external view returns (address[] memory, address[] memory);
 
-  function addPool(address pool_address) external;
+  function getLendingPool(uint id) external view returns (address, bool);
+
+  function getLendingPoolConfigurator(address pool) external view returns (address);
+
+  function getLendingPoolCollateralManager(address pool) external view returns (address);
+
+  function setLendingPool(uint id, address pool, address lending_pool_configurator_address, address lending_pool_cm_address) external;
+
+  function addPool(address pool_address, address configurator_address, address cm_address) external;
 
   function removePool(address pool_address) external;
 
