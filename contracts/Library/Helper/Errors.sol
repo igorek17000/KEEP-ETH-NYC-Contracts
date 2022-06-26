@@ -55,6 +55,8 @@ library Errors {
         VL_DEPOSIT_ALREADY_IN_USE,
         VL_TRADER_ADDRESS_MISMATCH,
         VL_POSITION_NOT_OPEN,
+        VL_POSITION_NOT_UNHEALTHY,
+        LP_LIQUIDATE_LP,
         /** Collateral Manager */
         CM_NO_ERROR,
         CM_NO_ACTIVE_RESERVE,

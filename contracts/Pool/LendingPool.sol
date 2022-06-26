@@ -303,6 +303,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     uint256 debtToCover,
     bool receiveAToken
   ) external override whenNotPaused {
+    require(user != address(this), Errors.GetError(Errors.Error.LP_LIQUIDATE_LP));
     address collateralManager = _addressesProvider.getLendingPoolCollateralManager(address(this));
 
     //solium-disable-next-line
@@ -804,24 +805,38 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     int256 pnl
   ) {
     DataTypes.TraderPosition storage position = _positionsList[id];
-    ValidationLogic.validateClosePosition(msg.sender, position, position.borrowedTokenAddress);
+    address borrowedTokenAddress = position.borrowedTokenAddress;
+    ValidationLogic.validateClosePosition(msg.sender, position, borrowedTokenAddress);
 
     pnl = GenericLogic.getPnL(position, _reserves, _addressesProvider.getPriceOracle());
 
-    // TODO: swap the heldAsset into borrowedAsset first
-    uint256 returnHeldAmount = 0;
-    uint256 returnMarginAmount = 0;
-
-    paymentAmount = returnHeldAmount.add(returnMarginAmount).sub(position.borrowedAmount);
-    
-    delete _positionsList[id];
-    IERC20(position.borrowedTokenAddress).safeTransfer(msg.sender, paymentAmount);
+    paymentAmount = _closePosition(position, id, msg.sender, address(this));
   }
 
+  /**
+   * @dev Close a position, swap all margin / pnl into paymentAsset
+   * @param id The id of position
+   * @return paymentAmount The amount of asset to payback user 
+   **/
   function liquidationCallPosition(
-
-  ) external {
-
+    uint id
+  )
+  external
+  whenNotPaused
+  returns (
+    uint256 paymentAmount
+  ) {
+    DataTypes.TraderPosition storage position = _positionsList[id];
+    address borrowedTokenAddress = position.borrowedTokenAddress;
+    ValidationLogic
+      .validateLiquidationCallPosition(
+        position,
+        borrowedTokenAddress,
+        _positionLiquidationThreshold,
+        _reserves,
+        _addressesProvider.getPriceOracle()
+      );
+    paymentAmount = _closePosition(position, id, msg.sender, address(this));
   }
 
   // /**
@@ -869,19 +884,72 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   //   IERC20(paymentAsset).safeTransfer(msg.sender, paymentAmount);
   // }
 
+  function _closePosition(
+    DataTypes.TraderPosition storage position,
+    uint256 id,
+    address receiver,
+    address pool
+  ) internal returns (uint256 paymentAmount) {
+    address borrowedTokenAddress = position.borrowedTokenAddress;
+    // TODO: swap the heldAsset into borrowedAsset first
+    uint256 returnHeldAmount = 0;
+    uint256 returnMarginAmount = 0;
+
+    paymentAmount = returnHeldAmount.add(returnMarginAmount).sub(position.borrowedAmount);
+    
+    // repay
+    DataTypes.ReserveData storage borrowedReserve = _reserves[borrowedTokenAddress];
+
+    uint256 paybackAmount = position.borrowedAmount;
+
+    borrowedReserve.updateState();
+
+    {
+      IDToken(borrowedReserve.dTokenAddress).burn(
+        pool,
+        paybackAmount,
+        borrowedReserve.borrowIndex
+      );
+    }
+
+    address kToken = borrowedReserve.kTokenAddress;
+    borrowedReserve.updateInterestRates(borrowedTokenAddress, kToken, paybackAmount, 0);
+
+    uint256 variableDebt = IERC20(borrowedReserve.dTokenAddress).balanceOf(pool);
+    if (variableDebt.sub(paybackAmount) == 0) {
+      _usersConfig[pool].isBorrowing[borrowedReserve.id] = false;
+    }
+
+    IERC20(borrowedTokenAddress).safeTransfer(kToken, paybackAmount);
+
+    IKToken(kToken).handleRepayment(pool, paybackAmount);
+
+    delete _positionsList[id];
+    IERC20(borrowedTokenAddress).safeTransfer(receiver, paymentAmount);
+  }
+
   function _addPositionToList(DataTypes.TraderPosition memory position) internal {
     _positionsList[_positionsCount] = position;
     _positionsList[_positionsCount].id = _positionsCount;
-    _TraderPositionMapping[position.traderAddress].push(position);
+    _traderPositionMapping[position.traderAddress].push(position);
 
     _positionsCount = _positionsCount + 1;
   }
 
   function getTraderPositions() external view override returns (DataTypes.TraderPosition[] memory positions) {
-    uint256 positionNumber = _TraderPositionMapping[msg.sender].length;
+    uint256 positionNumber = _traderPositionMapping[msg.sender].length;
     positions = new DataTypes.TraderPosition[](positionNumber);
     for (uint i = 0; i < positionNumber; i++) {
-      positions[i] = _TraderPositionMapping[msg.sender][i];
+      positions[i] = _traderPositionMapping[msg.sender][i];
     }
+  }
+
+  function getPositionData(uint256 id) external view override returns (
+    int256 pnl,
+    uint256 healthFactor
+  ) {
+    DataTypes.TraderPosition storage position = _positionsList[id];
+    pnl = GenericLogic.getPnL(position, _reserves, _addressesProvider.getPriceOracle());
+    healthFactor = GenericLogic.calculatePositionHealthFactor(position, _positionLiquidationThreshold, _reserves, _addressesProvider.getPriceOracle());
   }
 }

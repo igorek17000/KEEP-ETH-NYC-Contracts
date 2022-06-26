@@ -46,6 +46,7 @@ contract NomadicKeeper is KeeperCompatibleInterface {
             bool needsCheck = checkUnique(userToCheck);
             if (needsCheck) {
                 performUnique(userToCheck);
+                return;
             }
         }
     }

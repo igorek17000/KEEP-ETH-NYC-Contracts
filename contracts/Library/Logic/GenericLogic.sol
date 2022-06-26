@@ -66,7 +66,8 @@ library GenericLogic {
   )
   external
   view
-  returns (int256 pnl) {
+  returns (int256 pnl)
+  {
     uint256 borrowUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(position.borrowedTokenAddress);
     uint8 borrowDecimals = reservesData[position.borrowedTokenAddress].configuration.decimals;
     uint256 borrowValue = borrowUnitPrice.mul(position.borrowedAmount).div(10**borrowDecimals);
@@ -76,6 +77,40 @@ library GenericLogic {
     uint256 heldValue = heldUnitPrice.mul(position.heldAmount).div(10**heldDecimals);
     
     pnl = int256(heldValue) - int256(borrowValue);
+  }
+
+  // returns health factor in wad
+  function calculatePositionHealthFactor(
+    DataTypes.TraderPosition storage position,
+    uint256 positionLiquidationThreshold,
+    mapping(address => DataTypes.ReserveData) storage reservesData,
+    address oracle
+  )
+  external
+  view
+  returns (uint256 healthFactor)
+  {
+    uint256 borrowValue;
+    uint256 heldValue;
+    uint256 marginValue;
+
+    {
+      uint256 borrowUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(position.borrowedTokenAddress);
+      uint8 borrowDecimals = reservesData[position.borrowedTokenAddress].configuration.decimals;
+      borrowValue = borrowUnitPrice.mul(position.borrowedAmount).div(10**borrowDecimals);
+    }
+    {    
+      uint256 heldUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(position.heldTokenAddress);
+      uint8 heldDecimals = reservesData[position.heldTokenAddress].configuration.decimals;
+      heldValue = heldUnitPrice.mul(position.heldAmount).div(10**heldDecimals);
+    }
+    {
+      uint256 marginUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(position.marginTokenAddress);
+      uint8 marginDecimals = reservesData[position.marginTokenAddress].configuration.decimals;
+      marginValue = marginUnitPrice.mul(position.marginAmount).div(10**marginDecimals);
+    }
+    healthFactor = marginValue.add(heldValue).sub(borrowValue);
+    healthFactor = healthFactor.wadDiv(marginValue.rayMul(positionLiquidationThreshold));
   }
 
   /**

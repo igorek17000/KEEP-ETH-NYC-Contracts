@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import {Errors} from '../Helper/Errors.sol';
-import {IReserveInterestRateStrategy} from '../../Interface/IReserveInterestRateStrategy.sol';
 import {IERC20} from '../../Dependency/openzeppelin/IERC20.sol';
 import {SafeMath} from '../../Dependency/openzeppelin/SafeMath.sol';
 import {SafeERC20} from '../../Dependency/openzeppelin/SafeERC20.sol';
@@ -11,15 +10,8 @@ import {ReserveLogic} from './ReserveLogic.sol';
 import {GenericLogic} from './GenericLogic.sol';
 import {WadRayMath} from '../Math/WadRayMath.sol';
 import {PercentageMath} from '../Math/PercentageMath.sol';
-import {IPriceOracleGetter} from '../../Interface/IPriceOracleGetter.sol';
-import {ILendingPool} from '../../Interface/ILendingPool.sol';
 import {DataTypes} from '../Type/DataTypes.sol';
 
-/**
- * @title ReserveLogic library
- * @author Aave
- * @notice Implements functions to validate the different actions of the protocol
- */
 library ValidationLogic {
   using ReserveLogic for DataTypes.ReserveData;
   using SafeMath for uint256;
@@ -56,6 +48,26 @@ library ValidationLogic {
 
     require(positionTrader == traderAddress, Errors.GetError(Errors.Error.VL_TRADER_ADDRESS_MISMATCH));
     require(position.isOpen == true, Errors.GetError(Errors.Error.VL_POSITION_NOT_OPEN));
+  }
+
+  function validateLiquidationCallPosition(
+    DataTypes.TraderPosition storage position,
+    address paymentAddress,
+    uint256 positionLiquidationThreshold,
+    mapping(address => DataTypes.ReserveData) storage reservesData,
+    address oracle
+  ) external view {
+    require(position.isOpen == true, Errors.GetError(Errors.Error.VL_POSITION_NOT_OPEN));
+
+    uint256 healthFactor 
+      = GenericLogic
+      .calculatePositionHealthFactor(
+        position,
+        positionLiquidationThreshold,
+        reservesData,
+        oracle
+      );
+    require(healthFactor < GenericLogic.HEALTH_FACTOR_LIQUIDATION_THRESHOLD, Errors.GetError(Errors.Error.VL_POSITION_NOT_UNHEALTHY));
   }
 
   /**
