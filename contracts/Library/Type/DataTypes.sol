@@ -52,14 +52,18 @@ library DataTypes {
   struct UserPosition {
     // the trader
     address traderAddress;
-    // the asset as margin
-    address marginAsset;
-    // the asset to borrow
-    address borrowedAsset;
+    // the token as margin
+    address marginTokenAddress;
+    // the token to borrow
+    address borrowedTokenAddress;
+    // the token held
+    address heldTokenAddress;
     // the amount of provided margin
     uint256 marginAmount;
-    // the actual amount of borrowed asset
+    // the amount of borrowed asset
     uint256 borrowedAmount;
+    // the amount of held asset
+    uint256 heldAmount;
     // the liquidationThreshold at trade
     uint256 liquidationThreshold;
     // the id of position

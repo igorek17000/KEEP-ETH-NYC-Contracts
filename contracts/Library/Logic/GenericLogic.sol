@@ -18,7 +18,7 @@ library GenericLogic {
   using WadRayMath for uint256;
   using PercentageMath for uint256;
 
-  uint256 public constant HEALTH_FACTOR_LIQUIDATION_THRESHOLD = 1 ether;
+  uint256 public constant HEALTH_FACTOR_LIQUIDATION_THRESHOLD = 1 ether; // 1e18
 
   struct balanceDecreaseAllowedLocalVars {
     uint256 decimals;
@@ -31,6 +31,32 @@ library GenericLogic {
     uint256 liquidationThresholdAfterDecrease;
     uint256 healthFactorAfterDecrease;
     bool reserveUsageAsCollateralEnabled;
+  }
+
+  function swapToTargetAsset(
+    
+  ) external returns (
+    uint256 heldAmount
+  ) {
+
+  }
+
+  function calculateAmountToBorrow(
+    address supplyTokenAddress,
+    address borrowTokenAddress,
+    uint256 supplyTokenAmount,
+    mapping(address => DataTypes.ReserveData) storage reservesData,
+    address oracle
+  ) external view returns (
+    uint256 amountToBorrow
+  ) {
+    uint256 supplyUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(supplyTokenAddress);
+    uint8 supplyDecimals = reservesData[supplyTokenAddress].configuration.decimals;
+    uint256 borrowUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(borrowTokenAddress);
+    uint8 borrowDecimals = reservesData[borrowTokenAddress].configuration.decimals;
+
+    amountToBorrow = supplyTokenAmount.mul(supplyUnitPrice).mul(10**borrowDecimals);
+    amountToBorrow = amountToBorrow.div(borrowUnitPrice).div(10**supplyDecimals);
   }
 
   /**

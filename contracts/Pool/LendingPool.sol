@@ -54,6 +54,8 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   ) {
     _addressesProvider = provider;
     _maxNumberOfReserves = type(uint256).max;
+    _maximumLeverage = 20 * (10**27);
+    _positionLiquidationThreshold = 2 * (10**26);
   }
 
   /**
@@ -477,8 +479,22 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   /**
    * @dev Returns the maximum number of reserves supported to be listed in this LendingPool
    */
-  function MAX_NUMBER_RESERVES() public view returns (uint256) {
+  function MAX_NUMBER_RESERVES() external view returns (uint256) {
     return _maxNumberOfReserves;
+  }
+
+  /**
+   * @dev Returns the position liquidation threshold in this lending pool (in ray)
+   */
+  function POSITION_LIQUIDATION_THRESHOLD() external view returns (uint256) {
+    return _positionLiquidationThreshold;
+  }
+
+  /**
+   * @dev Returns the maximum position leverage in this lending pool (in ray)
+   */
+  function MAX_LEVERAGE() external view returns (uint256) {
+    return _maximumLeverage;
   }
 
   /**
@@ -697,8 +713,8 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
    * @param marginAsset The address of asset the trader supply as margin
    * @param borrowedAsset The address of asset the trader would like to borrow at a leverage
    * @param heldAsset The address of asset the pool will hold after swap
-   * @param marginAmount The amount of margin the trader transfers in
-   * @param leverage The leverage specified by user
+   * @param marginAmount The amount of margin the trader transfers in margin decimals
+   * @param leverage The leverage specified by user in ray
    **/
   function openPosition(
     address marginAsset,
@@ -710,14 +726,64 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   external
   whenNotPaused
   returns (
-    DataTypes.UserPosition memory
+    DataTypes.UserPosition memory position
   ) {
+    require((leverage < _maximumLeverage) && (leverage > 10**27), Errors.GetError(Errors.Error.LP_LEVERAGE_INVALID));
+
     DataTypes.ReserveData storage marginReserve = _reserves[marginAsset];
     DataTypes.ReserveData storage borrowedReserve = _reserves[borrowedAsset];
 
-    ValidationLogic.validateOpenPosition(marginReserve, borrowedReserve, heldAsset, marginAmount, leverage);
+    uint256 supplyTokenAmount = marginAmount.rayMul(leverage);
+    uint256 amountToBorrow = GenericLogic.calculateAmountToBorrow(marginAsset, borrowedAsset, supplyTokenAmount, _reserves, _addressesProvider.getPriceOracle());
+
+    ValidationLogic.validateOpenPosition(marginReserve, borrowedReserve, heldAsset, marginAmount, amountToBorrow);
 
     IERC20(marginAsset).safeTransferFrom(msg.sender, address(this), marginAmount);
+    
+    borrowedReserve.updateState();
+    IDToken(borrowedReserve.dTokenAddress).mint(
+        msg.sender,
+        address(this),
+        amountToBorrow,
+        borrowedReserve.borrowIndex
+      );
+
+    borrowedReserve.updateInterestRates(
+      borrowedAsset,
+      borrowedReserve.kTokenAddress,
+      0,
+      amountToBorrow
+    );
+
+    // if this fails, means there is not enough balance
+    IKToken(borrowedReserve.kTokenAddress).transferUnderlyingTo(address(this), amountToBorrow);
+
+    // TODO: transfer borrowedToken into heldToken through dex
+
+    uint256 heldAmount = 0;
+
+    position = DataTypes.UserPosition(
+      // the trader
+      msg.sender,
+      // the token as margin
+      marginAsset,
+      // the token to borrow
+      borrowedAsset,
+      // the token held
+      heldAsset,
+      // the amount of provided margin
+      marginAmount,
+      // the amount of borrowed asset
+      amountToBorrow,
+      // the amount of held asset
+      heldAmount,
+      // the liquidationThreshold at trade
+      _positionLiquidationThreshold,
+      // id of position
+      _positionsCount
+    );
+
+    _addPositionToList(position);
   }
 
   /**
@@ -739,5 +805,15 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   ) {
     DataTypes.UserPosition storage position = _positionsList[id];
     ValidationLogic.validateClosePosition(msg.sender, position, paymentAsset);
+
+    
+
+  }
+
+  function _addPositionToList(DataTypes.UserPosition memory position) internal {
+    _positionsList[_positionsCount] = position;
+    _positionsList[_positionsCount].id = _positionsCount;
+
+    _positionsCount = _positionsCount + 1;
   }
 }

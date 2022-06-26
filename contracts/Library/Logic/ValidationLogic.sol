@@ -12,6 +12,7 @@ import {GenericLogic} from './GenericLogic.sol';
 import {WadRayMath} from '../Math/WadRayMath.sol';
 import {PercentageMath} from '../Math/PercentageMath.sol';
 import {IPriceOracleGetter} from '../../Interface/IPriceOracleGetter.sol';
+import {ILendingPool} from '../../Interface/ILendingPool.sol';
 import {DataTypes} from '../Type/DataTypes.sol';
 
 /**
@@ -31,7 +32,7 @@ library ValidationLogic {
     DataTypes.ReserveData storage borrowedReserve,
     address heldAsset,
     uint256 marginAmount,
-    uint256 leverage
+    uint256 amountToBorrow
   ) external view {
     bool isActive = marginReserve.configuration.active;
     bool isFrozen = marginReserve.configuration.frozen;
@@ -46,7 +47,8 @@ library ValidationLogic {
 
     require(isActive, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
     require(!isFrozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
-
+    require(amountToBorrow != 0, Errors.GetError(Errors.Error.VL_INVALID_AMOUNT));
+    require(borrowingEnabled, Errors.GetError(Errors.Error.VL_BORROWING_NOT_ENABLED));
   }
 
   function validateClosePosition(
@@ -57,6 +59,7 @@ library ValidationLogic {
     address positionTrader = position.traderAddress;
 
     require(positionTrader == traderAddress, Errors.GetError(Errors.Error.VL_TRADER_ADDRESS_MISMATCH));
+
   }
 
   /**
