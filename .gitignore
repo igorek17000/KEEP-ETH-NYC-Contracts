@@ -4,7 +4,7 @@ coverage
 coverage.json
 typechain
 .vscode
-hardhat.config.js
+# hardhat.config.js
 package-lock.json
 
 # hardhat files

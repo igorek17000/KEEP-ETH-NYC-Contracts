@@ -39,7 +39,7 @@ async function main() {
   let oneInchRouterAddress = "0x1111111254fb6c44bac0bed2854e76f90643097d";
   let oneInchExecutorAddress = "0x521709b3cd7f07e29722be0ba28a8ce0e806dbc3";
   let address_provider = await LendingPoolAddressesProvider
-    .deploy(deployer.address, deployer.address, oracle.address, oneInchRouterAddress, oneInchExecutorAddress);
+    .deploy(deployer.address, deployer.address, oracle.address, oneInchRouterAddress, oneInchExecutorAddress, {gasLimit: 2500000});
   await address_provider.deployed();
   console.log("Address provider address: ", address_provider.address);
   // get libraries
