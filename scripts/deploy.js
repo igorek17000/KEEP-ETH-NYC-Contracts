@@ -54,7 +54,7 @@ async function main() {
   let library = {libraries: {ReserveLogic: reserve_logic.address, ValidationLogic: validation_logic.address, GenericLogic: generic_logic.address}}
 
   // 5. deploy 2 lending pools: main and eth-usdc
-  const LendingPool = await hre.ethers.getContractFactory("LendingPool", {libraries: {ReserveLogic: reserve_logic.address, ValidationLogic: validation_logic.address}});
+  const LendingPool = await hre.ethers.getContractFactory("LendingPool", {libraries: {ReserveLogic: reserve_logic.address, ValidationLogic: validation_logic.address, GenericLogic: generic_logic.address}});
   let main_pool = await LendingPool.deploy(address_provider.address);
   let eth_usdc_pool = await LendingPool.deploy(address_provider.address);
   await main_pool.deployed();
