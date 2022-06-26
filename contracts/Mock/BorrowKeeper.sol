@@ -4,15 +4,14 @@ pragma solidity ^0.8.0;
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "../Interface/ILendingPool.sol";
 import "../Interface/IDataProvider.sol";
+import "../Library/Logic/GenericLogic.sol";
 
-contract NomadicKeeper is KeeperCompatibleInterface {
-
-
-    ILendingPool public LendingPool;
-    IDataProvider public DataProvider; // LendingPool address here
-    address public collateralToken;
-    uint256 public poolId;
-    address public owner;
+contract BorrowKeeper is KeeperCompatibleInterface {
+    ILendingPool private LendingPool;
+    IDataProvider private DataProvider;
+    address private collateralToken;
+    uint256 private poolId;
+    address private owner;
 
     constructor(
         address lendingPool_,
@@ -39,10 +38,10 @@ contract NomadicKeeper is KeeperCompatibleInterface {
     }
 
     function performUpkeep(bytes calldata performData) external override {
-        address[] memory listToCheck = LendingPool.getUsersList();
+        uint length = LendingPool.getUsersList().length;
 
-        for (uint i = 0; i < listToCheck.length; i++) {
-            address userToCheck = listToCheck[i];
+        for (uint i = 0; i < length; i++) {
+            address userToCheck = LendingPool.getUsersList()[i];
             bool needsCheck = checkUnique(userToCheck);
             if (needsCheck) {
                 performUnique(userToCheck);
@@ -68,12 +67,15 @@ contract NomadicKeeper is KeeperCompatibleInterface {
     }
 
     function _shouldRun() internal view returns (bool runCheck) {
-        address[] memory listToCheck = LendingPool.getUsersList();
-        for (uint i = 0; i < listToCheck.length; i++) {
-            address userToCheck = listToCheck[i];
+        runCheck = false;
+        uint length = LendingPool.getUsersList().length;
+
+        for (uint i = 0; i < length; i++) {
+            address userToCheck = LendingPool.getUsersList()[i];
             bool needsCheck = checkUnique(userToCheck);
             if (needsCheck) {
                 runCheck = true;
+                break;
             }
         }
     }
@@ -92,7 +94,7 @@ contract NomadicKeeper is KeeperCompatibleInterface {
             uint256 healthFactor
         ) = LendingPool.getUserAccountData(userToCheck);
 
-        if (healthFactor < 1) {
+        if (healthFactor < GenericLogic.HEALTH_FACTOR_LIQUIDATION_THRESHOLD) {
             runCheck = true;
         }
     }

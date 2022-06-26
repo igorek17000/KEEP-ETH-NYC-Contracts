@@ -843,6 +843,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     uint id
   )
   external
+  override
   whenNotPaused
   returns (
     uint256 paymentAmount

@@ -256,6 +256,19 @@ interface ILendingPool {
       uint256 ltv,
       uint256 healthFactor
     );
+  
+  /**
+   * @dev Close a position, swap all margin / pnl into paymentAsset
+   * @param id The id of position
+   * @return paymentAmount The amount of asset to payback user 
+   **/
+  function liquidationCallPosition(
+    uint id
+  )
+  external
+  returns (
+    uint256 paymentAmount
+  );
 
   function initReserve(
     address reserve,
