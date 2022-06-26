@@ -30,25 +30,21 @@ library ValidationLogic {
   function validateOpenPosition(
     DataTypes.ReserveData storage marginReserve,
     DataTypes.ReserveData storage borrowedReserve,
-    address heldAsset,
+    DataTypes.ReserveData storage heldReserve,
     uint256 marginAmount,
     uint256 amountToBorrow
   ) external view {
-    bool isActive = marginReserve.configuration.active;
-    bool isFrozen = marginReserve.configuration.frozen;
-
     require(marginAmount != 0, Errors.GetError(Errors.Error.VL_INVALID_AMOUNT));
-    require(isActive, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
-    require(!isFrozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
+    require(marginReserve.configuration.active, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
+    require(!marginReserve.configuration.frozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
 
-    isActive = borrowedReserve.configuration.active;
-    isFrozen = borrowedReserve.configuration.frozen;
-    bool borrowingEnabled = borrowedReserve.configuration.borrowingEnabled;
+    require(heldReserve.configuration.active, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
+    require(!heldReserve.configuration.frozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
 
-    require(isActive, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
-    require(!isFrozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
+    require(borrowedReserve.configuration.active, Errors.GetError(Errors.Error.VL_NO_ACTIVE_RESERVE));
+    require(!borrowedReserve.configuration.frozen, Errors.GetError(Errors.Error.VL_RESERVE_FROZEN));
     require(amountToBorrow != 0, Errors.GetError(Errors.Error.VL_INVALID_AMOUNT));
-    require(borrowingEnabled, Errors.GetError(Errors.Error.VL_BORROWING_NOT_ENABLED));
+    require(borrowedReserve.configuration.borrowingEnabled, Errors.GetError(Errors.Error.VL_BORROWING_NOT_ENABLED));
   }
 
   function validateClosePosition(
@@ -59,7 +55,6 @@ library ValidationLogic {
     address positionTrader = position.traderAddress;
 
     require(positionTrader == traderAddress, Errors.GetError(Errors.Error.VL_TRADER_ADDRESS_MISMATCH));
-
   }
 
   /**

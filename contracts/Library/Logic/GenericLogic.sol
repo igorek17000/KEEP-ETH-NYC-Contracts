@@ -59,6 +59,25 @@ library GenericLogic {
     amountToBorrow = amountToBorrow.div(borrowUnitPrice).div(10**supplyDecimals);
   }
 
+  function getPnL(
+    DataTypes.UserPosition storage position,
+    mapping(address => DataTypes.ReserveData) storage reservesData,
+    address oracle
+  )
+  external
+  view
+  returns (int256 pnl) {
+    uint256 borrowUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(position.borrowedTokenAddress);
+    uint8 borrowDecimals = reservesData[position.borrowedTokenAddress].configuration.decimals;
+    uint256 borrowValue = borrowUnitPrice.mul(position.borrowedAmount).div(10**borrowDecimals);
+
+    uint256 heldUnitPrice = IPriceOracleGetter(oracle).getAssetPrice(position.heldTokenAddress);
+    uint8 heldDecimals = reservesData[position.heldTokenAddress].configuration.decimals;
+    uint256 heldValue = heldUnitPrice.mul(position.heldAmount).div(10**heldDecimals);
+    
+    pnl = int256(heldValue) - int256(borrowValue);
+  }
+
   /**
    * @dev Checks if a specific balance decrease is allowed
    * (i.e. doesn't bring the user borrow position health factor under HEALTH_FACTOR_LIQUIDATION_THRESHOLD)

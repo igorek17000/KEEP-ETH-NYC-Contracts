@@ -728,15 +728,15 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   returns (
     DataTypes.UserPosition memory position
   ) {
+    require(borrowedAsset != heldAsset, Errors.GetError(Errors.Error.LP_POSITION_INVALID));
     require((leverage < _maximumLeverage) && (leverage > 10**27), Errors.GetError(Errors.Error.LP_LEVERAGE_INVALID));
 
-    DataTypes.ReserveData storage marginReserve = _reserves[marginAsset];
     DataTypes.ReserveData storage borrowedReserve = _reserves[borrowedAsset];
 
     uint256 supplyTokenAmount = marginAmount.rayMul(leverage);
     uint256 amountToBorrow = GenericLogic.calculateAmountToBorrow(marginAsset, borrowedAsset, supplyTokenAmount, _reserves, _addressesProvider.getPriceOracle());
 
-    ValidationLogic.validateOpenPosition(marginReserve, borrowedReserve, heldAsset, marginAmount, amountToBorrow);
+    ValidationLogic.validateOpenPosition(_reserves[marginAsset], borrowedReserve, _reserves[heldAsset], marginAmount, amountToBorrow);
 
     IERC20(marginAsset).safeTransferFrom(msg.sender, address(this), marginAmount);
     
@@ -787,28 +787,78 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   }
 
   /**
-   * @dev Close a position
+   * @dev Close a position, swap all margin / pnl into paymentAsset
    * @param id The id of position
-   * @param paymentAsset The address of asset the user would like to receive finally
    * @return paymentAmount The amount of asset to payback user 
-   * @return pnl The pnl in ETH
+   * @return pnl The pnl in ETH (wad)
    **/
   function closePosition(
-    uint256 id,
-    address paymentAsset
+    uint256 id
   )
   external
   whenNotPaused
   returns (
     uint256 paymentAmount,
-    uint256 pnl
+    int256 pnl
   ) {
     DataTypes.UserPosition storage position = _positionsList[id];
-    ValidationLogic.validateClosePosition(msg.sender, position, paymentAsset);
+    ValidationLogic.validateClosePosition(msg.sender, position, position.borrowedTokenAddress);
 
-    
+    pnl = GenericLogic.getPnL(position, _reserves, _addressesProvider.getPriceOracle());
 
+    // TODO: swap the heldAsset into borrowedAsset first
+    uint256 returnHeldAmount = 0;
+    uint256 returnMarginAmount = 0;
+
+    paymentAmount = returnHeldAmount.add(returnMarginAmount).sub(position.borrowedAmount);
+
+    IERC20(position.borrowedTokenAddress).safeTransfer(msg.sender, paymentAmount);
   }
+
+  // /**
+  //  * @dev Close a position, swap all margin / pnl into paymentAsset
+  //  * @param id The id of position
+  //  * @param paymentAsset The address of asset the user would like to receive finally
+  //  * @return paymentAmount The amount of asset to payback user 
+  //  * @return pnl The pnl in ETH (wad)
+  //  **/
+  // function closePosition(
+  //   uint256 id,
+  //   address paymentAsset
+  // )
+  // external
+  // whenNotPaused
+  // returns (
+  //   uint256 paymentAmount,
+  //   int256 pnl
+  // ) {
+  //   DataTypes.UserPosition storage position = _positionsList[id];
+  //   ValidationLogic.validateClosePosition(msg.sender, position, paymentAsset);
+
+  //   pnl = GenericLogic.getPnL(position, _reserves, _addressesProvider.getPriceOracle());
+
+  //   // TODO: swap the heldAsset into borrowedAsset first
+  //   uint256 returnBorrowedAmount = 0;
+  //   uint256 remainingBorrowedAmount = 0;
+
+  //   if (position.borrowedAmount > returnBorrowedAmount) {
+  //     // TODO: swap all margin into borrowedAsset
+  //     uint256 returnMarginAmount = 0;
+  //     remainingBorrowedAmount = returnMarginAmount.add(returnBorrowedAmount).sub(position.borrowedAmount);
+  //   } else {
+  //     remainingBorrowedAmount = returnBorrowedAmount.sub(position.borrowedAmount);
+  //   }
+
+  //   if (paymentAsset != position.borrowedTokenAddress && remainingBorrowedAmount != 0) {
+  //     // TODO: swap the rest of profits into paymentAsset
+  //     paymentAmount = 0;
+
+  //   } else {
+  //     paymentAmount = remainingBorrowedAmount;
+  //   }
+
+  //   IERC20(paymentAsset).safeTransfer(msg.sender, paymentAmount);
+  // }
 
   function _addPositionToList(DataTypes.UserPosition memory position) internal {
     _positionsList[_positionsCount] = position;

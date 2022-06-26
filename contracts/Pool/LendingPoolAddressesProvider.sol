@@ -18,6 +18,7 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   bytes32 private constant MAIN_ADMIN = 'MAIN_ADMIN';
   bytes32 private constant EMERGENCY_ADMIN = 'EMERGENCY_ADMIN';
   bytes32 private constant PRICE_ORACLE = 'PRICE_ORACLE';
+  bytes32 private constant DEX = 'DEX';
 
   address[] private lending_pool_array;
   mapping(address => address) private lending_pool_configurator_mapping;
@@ -166,5 +167,14 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   function setPriceOracle(address priceOracle) external override onlyOwner {
     _addresses[PRICE_ORACLE] = priceOracle;
     emit PriceOracleUpdated(priceOracle);
+  }
+
+  function getDEX() external view override returns (address) {
+    return getAddress(DEX);
+  }
+
+  function setDEX(address dex) external override onlyOwner {
+    _addresses[DEX] = dex;
+    emit DEXUpdated(dex);
   }
 }

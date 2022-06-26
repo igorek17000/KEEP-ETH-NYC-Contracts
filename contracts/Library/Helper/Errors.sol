@@ -31,6 +31,7 @@ library Errors {
         LP_LIQUIDATION_CALL_FAILED,
         LP_CALLER_MUST_BE_AN_ATOKEN,
         LP_LEVERAGE_INVALID,
+        LP_POSITION_INVALID,
         /** Reserve Logic */
         RL_LIQUIDITY_INDEX_OVERFLOW,
         RL_BORROW_INDEX_OVERFLOW,
