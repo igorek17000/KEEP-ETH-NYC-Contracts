@@ -20,6 +20,8 @@ import {DataTypes} from '../Library/Type/DataTypes.sol';
 import {GenericLogic} from '../Library/Logic/GenericLogic.sol';
 import {ValidationLogic} from '../Library/Logic/ValidationLogic.sol';
 import {ReserveLogic} from '../Library/Logic/ReserveLogic.sol';
+import {IAggregationRouterV4} from '../Interface/1inch/IAggregationRouterV4.sol';
+import {IAggregationExecutor} from '../Interface/1inch/IAggregationExecutor.sol';
 
 contract LendingPool is ILendingPool, LendingPoolStorage {
   using WadRayMath for uint256;
@@ -28,6 +30,8 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   using SafeMath for uint256;
   using ReserveLogic for DataTypes.ReserveData;
 
+  address public SwapRouterAddr;
+  address public SwapExecutorAddr;
   modifier whenNotPaused() {
     _whenNotPaused();
     _;
@@ -50,8 +54,12 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   }
 
   constructor(
-    ILendingPoolAddressesProvider provider
+    ILendingPoolAddressesProvider provider,
+    address swapRouterAddr_,
+    address swapExecutorAddr_
   ) {
+    SwapRouterAddr = swapRouterAddr_;
+    SwapExecutorAddr = swapExecutorAddr_;
     _addressesProvider = provider;
     _maxNumberOfReserves = type(uint256).max;
     _maximumLeverage = 20 * (10**27);
@@ -742,7 +750,9 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     address borrowedAsset,
     address heldAsset,
     uint256 marginAmount,
-    uint256 leverage
+    uint256 leverage,
+    IAggregationRouterV4.SwapDescription memory desc,
+    bytes calldata data
   )
   external
   whenNotPaused
@@ -751,37 +761,40 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   ) {
     require(borrowedAsset != heldAsset, Errors.GetError(Errors.Error.LP_POSITION_INVALID));
     require((leverage < _maximumLeverage) && (leverage > 10**27), Errors.GetError(Errors.Error.LP_LEVERAGE_INVALID));
+    uint256 amountToBorrow;
+    {
+      DataTypes.ReserveData storage borrowedReserve = _reserves[borrowedAsset];
 
-    DataTypes.ReserveData storage borrowedReserve = _reserves[borrowedAsset];
+      uint256 supplyTokenAmount = marginAmount.rayMul(leverage);
+      amountToBorrow = GenericLogic.calculateAmountToBorrow(marginAsset, borrowedAsset, supplyTokenAmount, _reserves, _addressesProvider.getPriceOracle());
 
-    uint256 supplyTokenAmount = marginAmount.rayMul(leverage);
-    uint256 amountToBorrow = GenericLogic.calculateAmountToBorrow(marginAsset, borrowedAsset, supplyTokenAmount, _reserves, _addressesProvider.getPriceOracle());
+      ValidationLogic.validateOpenPosition(_reserves[marginAsset], borrowedReserve, _reserves[heldAsset], marginAmount, amountToBorrow);
 
-    ValidationLogic.validateOpenPosition(_reserves[marginAsset], borrowedReserve, _reserves[heldAsset], marginAmount, amountToBorrow);
+      IERC20(marginAsset).safeTransferFrom(msg.sender, address(this), marginAmount);
+      
+      borrowedReserve.updateState();
+      IDToken(borrowedReserve.dTokenAddress).mint(
+          msg.sender,
+          address(this),
+          amountToBorrow,
+          borrowedReserve.borrowIndex
+        );
 
-    IERC20(marginAsset).safeTransferFrom(msg.sender, address(this), marginAmount);
-    
-    borrowedReserve.updateState();
-    IDToken(borrowedReserve.dTokenAddress).mint(
-        msg.sender,
-        address(this),
-        amountToBorrow,
-        borrowedReserve.borrowIndex
+      borrowedReserve.updateInterestRates(
+        borrowedAsset,
+        borrowedReserve.kTokenAddress,
+        0,
+        amountToBorrow
       );
 
-    borrowedReserve.updateInterestRates(
-      borrowedAsset,
-      borrowedReserve.kTokenAddress,
-      0,
-      amountToBorrow
-    );
-
-    // if this fails, means there is not enough balance
-    IKToken(borrowedReserve.kTokenAddress).transferUnderlyingTo(address(this), amountToBorrow);
+      // if this fails, means there is not enough balance
+      IKToken(borrowedReserve.kTokenAddress).transferUnderlyingTo(address(this), amountToBorrow);
+    }
 
     // TODO: transfer borrowedToken into heldToken through dex
+    (uint256 returnAmount, uint256 gasLeft) = IAggregationRouterV4(SwapRouterAddr).swap(IAggregationExecutor(SwapExecutorAddr),desc,data);
 
-    uint256 heldAmount = 0;
+    uint256 heldAmount = returnAmount;
 
     position = DataTypes.TraderPosition(
       // the trader
