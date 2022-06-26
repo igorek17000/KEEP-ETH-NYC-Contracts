@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "../Interface/ILendingPool.sol";
 import "../Interface/IDataProvider.sol";
+import "../Interface/1inch/IAggregationRouterV4.sol";
 import "../Library/Logic/GenericLogic.sol";
 
 contract PositionKeeper is KeeperCompatibleInterface {
@@ -39,7 +40,12 @@ contract PositionKeeper is KeeperCompatibleInterface {
 
     function performUpkeep(bytes calldata performData) external override {
         uint length = LendingPool.getUsersList().length;
-
+        (
+            IAggregationRouterV4.SwapDescription memory desc1,
+            bytes memory data1,
+            IAggregationRouterV4.SwapDescription memory desc,
+            bytes memory data
+        ) = abi.decode(performData, (IAggregationRouterV4.SwapDescription, bytes, IAggregationRouterV4.SwapDescription, bytes));
         for (uint i = 0; i < length; i++) {
             address userToCheck = LendingPool.getUsersList()[i];
             uint positionLength = LendingPool.getTraderPositions(userToCheck).length;
@@ -48,15 +54,33 @@ contract PositionKeeper is KeeperCompatibleInterface {
                 if (!position.isOpen) continue;
                 bool needsCheck = checkUnique(position.id);
                 if (needsCheck) {
-                    performUnique(position.id);
+                    performUnique(
+                        position.id,
+                        desc1,
+                        data1,
+                        desc,
+                        data
+                    );
                     return;
                 }
             }
         }
     }
 
-    function performUnique(uint id) internal {
-        LendingPool.liquidationCallPosition(id);
+    function performUnique(
+        uint id,
+        IAggregationRouterV4.SwapDescription memory desc1,
+        bytes memory data1,
+        IAggregationRouterV4.SwapDescription memory desc,
+        bytes memory data
+    ) internal {
+        LendingPool.liquidationCallPosition(
+            id,
+            desc1,
+            data1,
+            desc,
+            data
+        );
     }
 
     function _shouldRun() internal view returns (bool runCheck) {

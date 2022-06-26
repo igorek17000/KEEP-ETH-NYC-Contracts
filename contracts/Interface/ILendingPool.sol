@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {DataTypes} from '../Library/Type/DataTypes.sol';
 import {ILendingPoolAddressesProvider} from './ILendingPoolAddressesProvider.sol';
+import {IAggregationRouterV4} from './1inch/IAggregationRouterV4.sol';
 
 interface ILendingPool {
   /**
@@ -291,8 +292,12 @@ interface ILendingPool {
    * @param id The id of position
    * @return paymentAmount The amount of asset to payback user 
    **/
-  function liquidationCallPosition(
-    uint id
+   function liquidationCallPosition(
+    uint id,
+    IAggregationRouterV4.SwapDescription memory desc1,
+    bytes calldata data1,
+    IAggregationRouterV4.SwapDescription memory desc,
+    bytes calldata data
   )
   external
   returns (

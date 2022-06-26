@@ -19,6 +19,8 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   bytes32 private constant EMERGENCY_ADMIN = 'EMERGENCY_ADMIN';
   bytes32 private constant PRICE_ORACLE = 'PRICE_ORACLE';
   bytes32 private constant DEX = 'DEX';
+  bytes32 private constant ONEINCH_ROUTER = 'ONEINCH_ROUTER';
+  bytes32 private constant ONEINCH_EXECUTOR = 'ONEINCH_EXECUTOR';
 
   address[] private lending_pool_array;
   mapping(address => address) private lending_pool_configurator_mapping;
@@ -28,11 +30,15 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   constructor(
     address main_admin,
     address emergency_admin,
-    address oracle
+    address oracle,
+    address swapRouterAddr_,
+    address swapExecutorAddr_
   ) {
     _addresses[MAIN_ADMIN] = main_admin;
     _addresses[EMERGENCY_ADMIN] = emergency_admin;
     _addresses[PRICE_ORACLE] = oracle;
+    _addresses[ONEINCH_ROUTER] = swapRouterAddr_;
+    _addresses[ONEINCH_EXECUTOR] = swapExecutorAddr_;
   }
 
   function _add_lending_pool(
@@ -174,5 +180,9 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   function setDEX(address dex) external override onlyOwner {
     _addresses[DEX] = dex;
     emit DEXUpdated(dex);
+  }
+
+  function getOneInch() external view override returns (address, address) {
+    return (_addresses[ONEINCH_ROUTER], _addresses[ONEINCH_EXECUTOR]);
   }
 }

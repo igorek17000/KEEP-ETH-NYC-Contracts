@@ -48,4 +48,6 @@ interface ILendingPoolAddressesProvider {
   function getDEX() external view returns (address);
 
   function setDEX(address dex) external;
+
+  function getOneInch() external view returns (address, address);
 }
