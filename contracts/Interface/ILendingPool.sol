@@ -129,6 +129,35 @@ interface ILendingPool {
     uint256 variableBorrowIndex
   );
 
+  event OpenPosition(
+    address trader,
+    address marginTokenAddress,
+    address borrowedTokenAddress,
+    uint256 marginAmount,
+    uint256 borrowedAmount,
+    uint256 liquidationThreshold,
+    uint id
+  );
+
+  event ClosePosition(
+    uint256 id,
+    address traderAddress,
+    address marginTokenAddress,
+    uint256 marginAmount,
+    address borrowedTokenAddress,
+    uint256 borrowedAmount
+  );
+
+  event PositionLiquidated(
+    uint256 id,
+    address liquidator,
+    address traderAddress,
+    address marginTokenAddress,
+    uint256 marginAmount,
+    address borrowedTokenAddress,
+    uint256 borrowedAmount
+  );
+
   function finalizeTransfer(
     address asset,
     address from,

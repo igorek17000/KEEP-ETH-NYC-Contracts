@@ -808,6 +808,23 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
 
     _addPositionToList(position);
     _addTraderToList(msg.sender);
+
+    emit OpenPosition(
+      // the trader
+      msg.sender,
+      // the token as margin
+      marginAsset,
+      // the token to borrow
+      borrowedAsset,
+      // the amount of provided margin
+      marginAmount,
+      // the amount of borrowed asset
+      amountToBorrow,
+      // the liquidationThreshold at trade
+      _positionLiquidationThreshold,
+      // id of position
+      _positionsCount
+    );
   }
 
   /**
@@ -854,11 +871,19 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
       .validateLiquidationCallPosition(
         position,
         borrowedTokenAddress,
-        _positionLiquidationThreshold,
         _reserves,
         _addressesProvider.getPriceOracle()
       );
     paymentAmount = _closePosition(position, id, msg.sender, address(this));
+    emit PositionLiquidated(
+      id,
+      msg.sender,
+      position.traderAddress,
+      position.marginTokenAddress,
+      position.marginAmount,
+      position.borrowedTokenAddress,
+      position.borrowedAmount
+    );
   }
 
   // /**
@@ -933,21 +958,29 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
         borrowedReserve.borrowIndex
       );
     }
+    {
+      address kToken = borrowedReserve.kTokenAddress;
+      borrowedReserve.updateInterestRates(borrowedTokenAddress, kToken, paybackAmount, 0);
 
-    address kToken = borrowedReserve.kTokenAddress;
-    borrowedReserve.updateInterestRates(borrowedTokenAddress, kToken, paybackAmount, 0);
+      uint256 variableDebt = IERC20(borrowedReserve.dTokenAddress).balanceOf(pool);
+      if (variableDebt.sub(paybackAmount) == 0) {
+        _usersConfig[pool].isBorrowing[borrowedReserve.id] = false;
+      }
 
-    uint256 variableDebt = IERC20(borrowedReserve.dTokenAddress).balanceOf(pool);
-    if (variableDebt.sub(paybackAmount) == 0) {
-      _usersConfig[pool].isBorrowing[borrowedReserve.id] = false;
+      IERC20(borrowedTokenAddress).safeTransfer(kToken, paybackAmount);
+
+      IKToken(kToken).handleRepayment(pool, paybackAmount);
     }
-
-    IERC20(borrowedTokenAddress).safeTransfer(kToken, paybackAmount);
-
-    IKToken(kToken).handleRepayment(pool, paybackAmount);
-
-    delete _positionsList[id];
+    _positionsList[id].isOpen = false;
     IERC20(borrowedTokenAddress).safeTransfer(receiver, paymentAmount);
+    emit ClosePosition(
+      id,
+      position.traderAddress,
+      position.marginTokenAddress,
+      position.marginAmount,
+      borrowedTokenAddress,
+      position.borrowedAmount
+    );
   }
 
   function _addPositionToList(DataTypes.TraderPosition memory position) internal {

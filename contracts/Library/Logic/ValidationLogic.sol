@@ -53,12 +53,11 @@ library ValidationLogic {
   function validateLiquidationCallPosition(
     DataTypes.TraderPosition storage position,
     address paymentAddress,
-    uint256 positionLiquidationThreshold,
     mapping(address => DataTypes.ReserveData) storage reservesData,
     address oracle
   ) external view {
     require(position.isOpen == true, Errors.GetError(Errors.Error.VL_POSITION_NOT_OPEN));
-
+    uint256 positionLiquidationThreshold = position.liquidationThreshold;
     uint256 healthFactor 
       = GenericLogic
       .calculatePositionHealthFactor(
