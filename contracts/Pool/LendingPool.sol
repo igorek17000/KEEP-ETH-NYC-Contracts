@@ -744,9 +744,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     address borrowedAsset,
     address heldAsset,
     uint256 marginAmount,
-    uint256 leverage,
-    IAggregationRouterV4.SwapDescription memory desc,
-    bytes calldata data
+    uint256 leverage
   )
   external
   whenNotPaused
@@ -784,12 +782,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     IKToken(borrowedReserve.kTokenAddress).transferUnderlyingTo(address(this), amountToBorrow);
 
     // transfer borrowedToken into heldToken through dex (1inch)
-    uint256 returnAmount;
-    {
-      (address SwapRouterAddr, address SwapExecutorAddr) = _addressesProvider.getOneInch();
-      (returnAmount, ) = IAggregationRouterV4(SwapRouterAddr).swap(IAggregationExecutor(SwapExecutorAddr),desc,data);
-    }
-    uint256 heldAmount = returnAmount;
+    uint256 heldAmount = amountToBorrow;
 
     position = DataTypes.TraderPosition(
       // the trader
@@ -842,12 +835,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
    * @return pnl The pnl in ETH (wad)
    **/
   function closePosition(
-    uint256 id,
-    IAggregationRouterV4.SwapDescription memory desc1,
-    bytes calldata data1,
-
-    IAggregationRouterV4.SwapDescription memory desc,
-    bytes calldata data
+    uint256 id
   )
   external
   whenNotPaused
@@ -861,7 +849,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
 
     pnl = GenericLogic.getPnL(position, _reserves, _addressesProvider.getPriceOracle());
 
-    paymentAmount = _closePosition(position, id, msg.sender, address(this), desc1, data1, desc, data);
+    paymentAmount = _closePosition(position, id, msg.sender, address(this));
     emit ClosePosition(
       id,
       position.traderAddress,
@@ -878,11 +866,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
    * @return paymentAmount The amount of asset to payback user 
    **/
   function liquidationCallPosition(
-    uint id,
-    IAggregationRouterV4.SwapDescription memory desc1,
-    bytes calldata data1,
-    IAggregationRouterV4.SwapDescription memory desc,
-    bytes calldata data
+    uint id
   )
   external
   override
@@ -899,7 +883,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
         _reserves,
         _addressesProvider.getPriceOracle()
       );
-    paymentAmount = _closePosition(position, id, msg.sender, address(this),desc1,data1,desc,data);
+    paymentAmount = _closePosition(position, id, msg.sender, address(this));
     emit PositionLiquidated(
       id,
       msg.sender,
@@ -968,22 +952,13 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     DataTypes.TraderPosition storage position,
     uint256 id,
     address receiver,
-    address pool,
-    IAggregationRouterV4.SwapDescription memory desc1,
-    bytes calldata data1,
-    IAggregationRouterV4.SwapDescription memory desc,
-    bytes calldata data
+    address pool
   ) internal returns (uint256 paymentAmount) {
     address borrowedTokenAddress = position.borrowedTokenAddress;
     // TODO: swap the heldAsset into borrowedAsset first
     {
-      uint256 returnHeldAmount;
-      uint256 returnMarginAmount;
-      {
-        (address SwapRouterAddr, address SwapExecutorAddr) = _addressesProvider.getOneInch();
-        (returnHeldAmount, ) = IAggregationRouterV4(SwapRouterAddr).swap(IAggregationExecutor(SwapExecutorAddr), desc, data);
-        (returnMarginAmount, ) = IAggregationRouterV4(SwapRouterAddr).swap(IAggregationExecutor(SwapExecutorAddr), desc1, data1);
-      }
+      uint256 returnHeldAmount = position.heldAmount;
+      uint256 returnMarginAmount = position.marginAmount;
 
       paymentAmount = returnHeldAmount.add(returnMarginAmount).sub(position.borrowedAmount);
     }

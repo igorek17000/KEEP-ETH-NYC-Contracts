@@ -293,11 +293,7 @@ interface ILendingPool {
    * @return paymentAmount The amount of asset to payback user 
    **/
    function liquidationCallPosition(
-    uint id,
-    IAggregationRouterV4.SwapDescription memory desc1,
-    bytes calldata data1,
-    IAggregationRouterV4.SwapDescription memory desc,
-    bytes calldata data
+    uint id
   )
   external
   returns (
