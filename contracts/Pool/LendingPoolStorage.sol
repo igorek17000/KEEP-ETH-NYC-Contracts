@@ -31,10 +31,16 @@ contract LendingPoolStorage {
   uint256 internal _reservesCount;
   // the list of users who have supplied TODO: automatically remove stale users
   mapping(uint256 => address) internal _usersList;
-  // if user has encountered before
+  // if the user has been encountered before
   mapping(address => bool) internal _userActive;
   // the number of users
   uint256 internal _usersCount;
+  // the list of traders who have opened positions TODO: automatically remove stale traders
+  mapping(uint256 => address) internal _tradersList;
+  // if the trader has been encountered before
+  mapping(address => bool) internal _traderActive;
+  // the number of traders
+  uint256 internal _tradersCount;
   // if lending pool is paused or not
   bool internal _paused;
   // the maximum number of reserves

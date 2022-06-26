@@ -470,6 +470,15 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     return _activeUsers;
   }
 
+  function getTradersList() external view override returns (address[] memory) {
+    address[] memory _activeTraders = new address[](_tradersCount);
+
+    for (uint256 i = 0; i < _tradersCount; i++) {
+      _activeTraders[i] = _tradersList[i];
+    }
+    return _activeTraders;
+  }
+
   /**
    * @dev Returns the cached LendingPoolAddressesProvider connected to this contract
    **/
@@ -708,6 +717,17 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     }
   }
 
+  function _addTraderToList(address trader) internal {
+    bool traderAlreadyAdded = _traderActive[trader] == true;
+
+    if (!traderAlreadyAdded) {
+      _traderActive[trader] = true;
+      _tradersList[_usersCount] = trader;
+
+      _tradersCount = _tradersCount + 1;
+    }
+  }
+
   /**
    * @dev Open a position, supply margin and borrow from pool. Traders should 
    * approve pools at first for the transfer of their assets
@@ -787,6 +807,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     );
 
     _addPositionToList(position);
+    _addTraderToList(msg.sender);
   }
 
   /**
@@ -936,11 +957,11 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     _positionsCount = _positionsCount + 1;
   }
 
-  function getTraderPositions() external view override returns (DataTypes.TraderPosition[] memory positions) {
-    uint256 positionNumber = _traderPositionMapping[msg.sender].length;
+  function getTraderPositions(address trader) external view override returns (DataTypes.TraderPosition[] memory positions) {
+    uint256 positionNumber = _traderPositionMapping[trader].length;
     positions = new DataTypes.TraderPosition[](positionNumber);
     for (uint i = 0; i < positionNumber; i++) {
-      positions[i] = _traderPositionMapping[msg.sender][i];
+      positions[i] = _traderPositionMapping[trader][i];
     }
   }
 

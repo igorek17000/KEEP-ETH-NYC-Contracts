@@ -308,13 +308,15 @@ interface ILendingPool {
 
   function getUsersList() external view returns (address[] memory);
 
+  function getTradersList() external view returns (address[] memory);
+
   function getAddressesProvider() external view returns (ILendingPoolAddressesProvider);
 
   function setPause(bool val) external;
 
   function paused() external view returns (bool);
 
-  function getTraderPositions() external view returns (DataTypes.TraderPosition[] memory positions);
+  function getTraderPositions(address trader) external view returns (DataTypes.TraderPosition[] memory positions);
 
   function getPositionData(uint256 id) external view returns (int256 pnl, uint256 healthFactor);
 }
