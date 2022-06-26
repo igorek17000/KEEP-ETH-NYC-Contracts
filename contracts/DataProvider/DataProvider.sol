@@ -31,6 +31,14 @@ contract DataProvider is IDataProvider {
     ADDRESSES_PROVIDER = addressesProvider;
   }
 
+  // function getPoolNumber() external view override returns (uint) {
+  //   return ADDRESSES_PROVIDER.getAllPools().length;
+  // }
+
+  function getAddressesProvider() external view override returns (ILendingPoolAddressesProvider) {
+    return ADDRESSES_PROVIDER;
+  }
+
   function getAllReservesTokens(uint id) external view override returns (TokenData[] memory) {
     (address pool_address,) = ADDRESSES_PROVIDER.getLendingPool(id);
     ILendingPool pool = ILendingPool(pool_address);
@@ -131,4 +139,5 @@ contract DataProvider is IDataProvider {
       reserve.dTokenAddress
     );
   }
+
 }

@@ -55,7 +55,7 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
     emit PoolRemoved(lending_pool_address);
   }
 
-  function getAllPools() external override view returns (address[] memory, address[] memory) {
+  function getAllPools() external override view returns (address[] memory) {
     uint pool_length = lending_pool_array.length;
     uint pool_number = 0;
     for (uint i = 0; i < pool_length; i++) {
@@ -65,16 +65,14 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
         }
     }
     address[] memory all_pools = new address[](pool_number);
-    address[] memory all_pool_configurators = new address[](pool_number);
     for (uint i = 0; i < pool_length; i++) {
         address curr_pool_address = lending_pool_array[i];
         if (lending_pool_valid[curr_pool_address] == true) {
             pool_number = pool_number - 1;
             all_pools[pool_number] = curr_pool_address;
-            all_pool_configurators[pool_number] = lending_pool_configurator_mapping[curr_pool_address];
         }
     }
-    return (all_pools, all_pool_configurators);
+    return all_pools;
   }
 
   function addPool(address pool_address, address lending_pool_configurator_address, address lending_pool_cm_address) external override onlyOwner {

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import {DataTypes} from '../Library/Type/DataTypes.sol';
+import {ILendingPoolAddressesProvider} from './ILendingPoolAddressesProvider.sol';
 
 interface IDataProvider {
   struct TokenData {
@@ -10,6 +11,7 @@ interface IDataProvider {
     address tokenAddress;
   }
 
+  function getAddressesProvider() external view returns (ILendingPoolAddressesProvider);
   function getAllReservesTokens(uint id) external view returns (TokenData[] memory);
   function getAllATokens(uint id) external view returns (TokenData[] memory);
   function getReserveConfigurationData(uint id, address asset)

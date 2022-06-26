@@ -13,7 +13,7 @@ interface ILendingPoolAddressesProvider {
   event PoolRemoved(address pool_address);
   event DEXUpdated(address dex);
 
-  function getAllPools() external view returns (address[] memory, address[] memory);
+  function getAllPools() external view returns (address[] memory);
 
   function getLendingPool(uint id) external view returns (address, bool);
 

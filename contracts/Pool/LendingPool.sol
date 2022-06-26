@@ -726,7 +726,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   external
   whenNotPaused
   returns (
-    DataTypes.UserPosition memory position
+    DataTypes.TraderPosition memory position
   ) {
     require(borrowedAsset != heldAsset, Errors.GetError(Errors.Error.LP_POSITION_INVALID));
     require((leverage < _maximumLeverage) && (leverage > 10**27), Errors.GetError(Errors.Error.LP_LEVERAGE_INVALID));
@@ -762,7 +762,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
 
     uint256 heldAmount = 0;
 
-    position = DataTypes.UserPosition(
+    position = DataTypes.TraderPosition(
       // the trader
       msg.sender,
       // the token as margin
@@ -780,7 +780,9 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
       // the liquidationThreshold at trade
       _positionLiquidationThreshold,
       // id of position
-      _positionsCount
+      _positionsCount,
+      // position is open
+      true
     );
 
     _addPositionToList(position);
@@ -801,7 +803,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     uint256 paymentAmount,
     int256 pnl
   ) {
-    DataTypes.UserPosition storage position = _positionsList[id];
+    DataTypes.TraderPosition storage position = _positionsList[id];
     ValidationLogic.validateClosePosition(msg.sender, position, position.borrowedTokenAddress);
 
     pnl = GenericLogic.getPnL(position, _reserves, _addressesProvider.getPriceOracle());
@@ -811,8 +813,15 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
     uint256 returnMarginAmount = 0;
 
     paymentAmount = returnHeldAmount.add(returnMarginAmount).sub(position.borrowedAmount);
-
+    
+    delete _positionsList[id];
     IERC20(position.borrowedTokenAddress).safeTransfer(msg.sender, paymentAmount);
+  }
+
+  function liquidationCallPosition(
+
+  ) external {
+
   }
 
   // /**
@@ -832,7 +841,7 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   //   uint256 paymentAmount,
   //   int256 pnl
   // ) {
-  //   DataTypes.UserPosition storage position = _positionsList[id];
+  //   DataTypes.TraderPosition storage position = _positionsList[id];
   //   ValidationLogic.validateClosePosition(msg.sender, position, paymentAsset);
 
   //   pnl = GenericLogic.getPnL(position, _reserves, _addressesProvider.getPriceOracle());
@@ -860,10 +869,19 @@ contract LendingPool is ILendingPool, LendingPoolStorage {
   //   IERC20(paymentAsset).safeTransfer(msg.sender, paymentAmount);
   // }
 
-  function _addPositionToList(DataTypes.UserPosition memory position) internal {
+  function _addPositionToList(DataTypes.TraderPosition memory position) internal {
     _positionsList[_positionsCount] = position;
     _positionsList[_positionsCount].id = _positionsCount;
+    _TraderPositionMapping[position.traderAddress].push(position);
 
     _positionsCount = _positionsCount + 1;
+  }
+
+  function getTraderPositions() external view override returns (DataTypes.TraderPosition[] memory positions) {
+    uint256 positionNumber = _TraderPositionMapping[msg.sender].length;
+    positions = new DataTypes.TraderPosition[](positionNumber);
+    for (uint i = 0; i < positionNumber; i++) {
+      positions[i] = _TraderPositionMapping[msg.sender][i];
+    }
   }
 }

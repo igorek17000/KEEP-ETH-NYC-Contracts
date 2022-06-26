@@ -313,4 +313,6 @@ interface ILendingPool {
   function setPause(bool val) external;
 
   function paused() external view returns (bool);
+
+  function getTraderPositions() external view returns (DataTypes.TraderPosition[] memory positions);
 }

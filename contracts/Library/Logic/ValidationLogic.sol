@@ -49,12 +49,13 @@ library ValidationLogic {
 
   function validateClosePosition(
     address traderAddress,
-    DataTypes.UserPosition storage position,
+    DataTypes.TraderPosition storage position,
     address paymentAddress
   ) external view {
     address positionTrader = position.traderAddress;
 
     require(positionTrader == traderAddress, Errors.GetError(Errors.Error.VL_TRADER_ADDRESS_MISMATCH));
+    require(position.isOpen == true, Errors.GetError(Errors.Error.VL_POSITION_NOT_OPEN));
   }
 
   /**

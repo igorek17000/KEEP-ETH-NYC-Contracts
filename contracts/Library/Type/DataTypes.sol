@@ -49,7 +49,7 @@ library DataTypes {
     mapping(uint256 => bool) isBorrowing;
   }
 
-  struct UserPosition {
+  struct TraderPosition {
     // the trader
     address traderAddress;
     // the token as margin
@@ -68,6 +68,8 @@ library DataTypes {
     uint256 liquidationThreshold;
     // the id of position
     uint256 id;
+    // position is open
+    bool isOpen;
   }
 
   enum InterestRateMode {NONE, VARIABLE}

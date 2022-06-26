@@ -54,6 +54,7 @@ library Errors {
         VL_UNDERLYING_BALANCE_NOT_GREATER_THAN_0,
         VL_DEPOSIT_ALREADY_IN_USE,
         VL_TRADER_ADDRESS_MISMATCH,
+        VL_POSITION_NOT_OPEN,
         /** Collateral Manager */
         CM_NO_ERROR,
         CM_NO_ACTIVE_RESERVE,

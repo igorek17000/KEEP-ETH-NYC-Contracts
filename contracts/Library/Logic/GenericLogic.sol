@@ -60,7 +60,7 @@ library GenericLogic {
   }
 
   function getPnL(
-    DataTypes.UserPosition storage position,
+    DataTypes.TraderPosition storage position,
     mapping(address => DataTypes.ReserveData) storage reservesData,
     address oracle
   )
